@@ -12,8 +12,7 @@ app.use(express.json());
 
 app.use(express.static(path.join(__dirname, "../public")));
 
-
-app.use("/api/auth",  require("./routes/authRoutes.js"));
+app.use("/api/auth", require("./routes/authRoutes.js"));
 
 app.use("/api/content", require("./routes/contentRoutes.js"));
 

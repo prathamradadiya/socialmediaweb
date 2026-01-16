@@ -1,18 +1,38 @@
-
+const mongoose = require("mongoose");
 const Content = require("../models/content.model");
-// const Post = require("../models/post.model");
-
+const Post = require("../models/post.model");
+const Music = require("../models/music.model");
 
 exports.createPostWithContent = async (req, res) => {
   try {
+    // AUTH CHECK
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { musicId, title } = req.body;
+
+    // VALIDATE MUSIC ID (if provided)
+    let musicRef = null;
+    if (musicId) {
+      if (!mongoose.Types.ObjectId.isValid(musicId)) {
+        return res.status(400).json({ message: "Invalid musicId format" });
+      }
+
+      const musicExists = await Music.findById(musicId);
+      if (!musicExists) {
+        return res.status(404).json({ message: "Music not found" });
+      }
+
+      musicRef = musicExists._id; // store ObjectId in content/post
+    }
+
     const files = req.files;
-    // console.log(files);
-     
-   
     if (!files || files.length === 0) {
       return res.status(400).json({ message: "Files required" });
     }
 
+    // PROCESS FILES
     let images = [];
     let reel = null;
 
@@ -24,41 +44,43 @@ exports.createPostWithContent = async (req, res) => {
       }
     });
 
-    // validation
+    // VALIDATIONS
     if (images.length > 10) {
-      return res.status(400).json({
-        message: "Maximum 10 images allowed",
-      });
+      return res.status(400).json({ message: "Maximum 10 images allowed" });
     }
 
-    if (
-      reel &&
-      files.filter((f) => f.mimetype.startsWith("video/")).length > 1
-    ) {
-      return res.status(400).json({
-        message: "Only 1 reel allowed",
-      });
+    const videoCount = files.filter((f) =>
+      f.mimetype.startsWith("video/")
+    ).length;
+    if (videoCount > 1) {
+      return res.status(400).json({ message: "Only 1 reel allowed" });
     }
 
-    // save content
+    // SAVE CONTENT
     const content = await Content.create({
       type: reel ? "reel" : "post",
-      images: images,
-      reel: reel,
+      images,
+      reel,
+      title: title || "",
+      music: musicRef, // link music to content
     });
 
- 
-    // const post = await Post.create({
-    //   contentId: content._id,
+    // SAVE POST
+    const post = await Post.create({
+      userId: req.user._id,
+      contentId: content._id,
+      musicId: musicRef, // link music to post as well
+    });
 
-    // });
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      // post,
+      post,
       content,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };

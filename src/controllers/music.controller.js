@@ -11,13 +11,14 @@ exports.addMusic = async (req, res) => {
       return res.status(400).json({ message: "Song file required" });
     }
 
-    const { title } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ message: "Title is required" });
-    }
-
     const songPath = `/${req.file.filename}`;
+
+    let title = req.body.title;
+
+    // handle object case
+    if (typeof title === "object" && title.title) {
+      title = title.title;
+    }
 
     const song = await Music.create({
       userId: req.user._id,

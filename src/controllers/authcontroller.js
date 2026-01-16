@@ -9,12 +9,11 @@ exports.signup = async (req, res) => {
     const { username, email, password, role, phoneNumber, bio } = req.body;
 
     // Validate input
-    if (!username || !email || !password || !phoneNumber) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Please provide username, email, password, role, phone number",
-      });
-    }
-
+    // if (!username || !email || !password || !phoneNumber) {
+    //   return res.status(StatusCodes.BAD_REQUEST).json({
+    //     message: "Please provide username, email, password, role, phone number",
+    //   });
+    // }
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {

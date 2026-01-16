@@ -44,9 +44,8 @@ const userSchema = new mongoose.Schema(
 
     phoneNumber: {
       type: String,
-      default: "",
       required: true,
-      match: /^[0-9]{10}$/,
+      // match: /^[0-9]{10}$/,
     },
 
     follower_count: {
