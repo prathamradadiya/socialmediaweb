@@ -10,8 +10,12 @@ const upload = require("../middlewares/uploadContentMiddleware");
 router.post(
   "/create",
   authMiddleware,
-  upload.array("image", 10),
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "reel", maxCount: 1 },
+  ]),
   createPostWithContent
 );
+
 
 module.exports = router;

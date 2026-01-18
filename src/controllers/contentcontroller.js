@@ -5,82 +5,74 @@ const Music = require("../models/music.model");
 
 exports.createPostWithContent = async (req, res) => {
   try {
-    // AUTH CHECK
-    if (!req.user || !req.user._id) {
+    if (!req.user?._id) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { musicId, title } = req.body;
+    const { musicTitle, title } = req.body;
 
-    // VALIDATE MUSIC ID (if provided)
+    /* ========= MUSIC (USER SENDS TITLE ONLY) ========= */
     let musicRef = null;
-    if (musicId) {
-      if (!mongoose.Types.ObjectId.isValid(musicId)) {
-        return res.status(400).json({ message: "Invalid musicId format" });
-      }
 
-      const musicExists = await Music.findById(musicId);
-      if (!musicExists) {
+    if (musicTitle) {
+      const music = await Music.findOne({
+        title: { $regex: `^${musicTitle}$`, $options: "i" }
+      });
+
+      if (!music) {
         return res.status(404).json({ message: "Music not found" });
       }
 
-      musicRef = musicExists._id; // store ObjectId in content/post
+      musicRef = music._id; // ✅ AUTO-SAVED
     }
 
-    const files = req.files;
-    if (!files || files.length === 0) {
-      return res.status(400).json({ message: "Files required" });
+    /* ========= FILES ========= */
+    const imagesFiles = req.files?.images || [];
+    const reelFiles = req.files?.reel || [];
+
+    if (imagesFiles.length === 0 && reelFiles.length === 0) {
+      return res.status(400).json({ message: "Image or Reel required" });
     }
 
-    // PROCESS FILES
-    let images = [];
-    let reel = null;
-
-    files.forEach((file) => {
-      if (file.mimetype.startsWith("image/")) {
-        images.push(`/${file.filename}`);
-      } else if (file.mimetype.startsWith("video/")) {
-        reel = `/${file.filename}`;
-      }
-    });
-
-    // VALIDATIONS
-    if (images.length > 10) {
-      return res.status(400).json({ message: "Maximum 10 images allowed" });
+    if (imagesFiles.length > 10) {
+      return res.status(400).json({ message: "Max 10 images allowed" });
     }
 
-    const videoCount = files.filter((f) =>
-      f.mimetype.startsWith("video/")
-    ).length;
-    if (videoCount > 1) {
+    if (reelFiles.length > 1) {
       return res.status(400).json({ message: "Only 1 reel allowed" });
     }
 
-    // SAVE CONTENT
+    const images = imagesFiles.map(f => `/${f.filename}`);
+    const reel = reelFiles.length ? `/${reelFiles[0].filename}` : null;
+
+    /* ========= SAVE CONTENT ========= */
     const content = await Content.create({
       type: reel ? "reel" : "post",
       images,
       reel,
       title: title || "",
-      music: musicRef, // link music to content
+      music: musicRef, // ✅ saved automatically
     });
 
-    // SAVE POST
+    /* ========= SAVE POST ========= */
     const post = await Post.create({
       userId: req.user._id,
       contentId: content._id,
-      musicId: musicRef, // link music to post as well
+      musicId: musicRef, // ✅ saved automatically
     });
 
     return res.status(201).json({
       success: true,
+      message: "Post created successfully",
       post,
       content,
     });
-  } catch (err) {
+
+  } catch (error) {
     return res.status(500).json({
       success: false,
-      error: err.message,
+      message: "Server error",
+      error: error.message,
     });
   }
 };
