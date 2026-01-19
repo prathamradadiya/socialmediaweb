@@ -2,18 +2,12 @@ const bcrypt = require("bcrypt");
 const User = require("../models/users.model");
 const { createJWT } = require("./helper/json_web_token");
 const { StatusCodes } = require("http-status-codes");
-
+const BlockedId = require("../models/blocked_acc.model");
 /* ===================== SIGNUP ===================== */
 exports.signup = async (req, res) => {
   try {
     const { username, email, password, role, phoneNumber, bio } = req.body;
 
-    // Validate input
-    // if (!username || !email || !password || !phoneNumber) {
-    //   return res.status(StatusCodes.BAD_REQUEST).json({
-    //     message: "Please provide username, email, password, role, phone number",
-    //   });
-    // }
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -104,5 +98,74 @@ exports.login = async (req, res) => {
       message: "Server error",
       error: error.message,
     });
+  }
+};
+
+exports.getUserProfile = async (req, res) => {
+  const { userId } = req.params;
+
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const isBlocked = await blockUser.findOne({
+    blockedId: userId,
+    blockerId: req.user._id,
+  });
+  if (isBlocked) {
+    let user = await User.findById(userId).select(
+      "-password",
+      "-role",
+      "-status",
+      "-email",
+    );
+  }
+  user = await User.findById(userId).select("-password");
+
+  res.status(200).json(user);
+};
+
+exports.getUserProfile = async (req, res) => {
+  try {
+    const profileUserId = req.params.userId;
+    const viewerId = req.user._id;
+
+    const user = await User.findById(profileUserId).select(
+      "username profilePicture bio followers following",
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // check if block exists (either direction)
+    const isBlocked = await BlockedId.findOne({
+      $or: [
+        { blockerId: profileUserId, blockedId: viewerId },
+        { blockerId: viewerId, blockedId: profileUserId },
+      ],
+    });
+
+    // 🔒 LIMITED VIEW IF BLOCKED
+    if (isBlocked) {
+      return res.status(200).json({
+        blocked: true,
+        user: {
+          username: user.username,
+          profilePicture: user.profilePicture,
+          bio: user.bio,
+          follower: { $set: { follower: 0 } },
+          following: { $set: { following: 0 } },
+        },
+      });
+    }
+
+    // ✅ FULL PROFILE
+    res.status(200).json({
+      blocked: false,
+      user,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };

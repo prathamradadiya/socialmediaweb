@@ -3,24 +3,26 @@ const mongoose = require("mongoose");
 const conversationSchema = new mongoose.Schema(
   {
     type: {
-      enum: [group, private],
+      type: String,
+      enum: ["group", "private"],
       required: true,
     },
-    conversation_mem_id: [
+
+    members: [
       {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "users",
         required: true,
       },
     ],
-    last_mess_Id: {
-      type: String,
-      required: true,
-    },
-    deleted_at: {
-      type: string,
+
+    lastMessage: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "messages",
+      default: null,
     },
   },
   { timestamps: true }
 );
-const conversation = mongoose.model("conversations", conversationSchema);
-module.exports = conversation;
+
+module.exports = mongoose.model("conversations", conversationSchema);

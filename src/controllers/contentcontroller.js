@@ -16,14 +16,14 @@ exports.createPostWithContent = async (req, res) => {
 
     if (musicTitle) {
       const music = await Music.findOne({
-        title: { $regex: `^${musicTitle}$`, $options: "i" }
+        title: { $regex: `^${musicTitle}$`, $options: "i" },
       });
 
       if (!music) {
         return res.status(404).json({ message: "Music not found" });
       }
 
-      musicRef = music._id; // ✅ AUTO-SAVED
+      musicRef = music._id; // music id from name matches above
     }
 
     /* ========= FILES ========= */
@@ -42,7 +42,7 @@ exports.createPostWithContent = async (req, res) => {
       return res.status(400).json({ message: "Only 1 reel allowed" });
     }
 
-    const images = imagesFiles.map(f => `/${f.filename}`);
+    const images = imagesFiles.map((f) => `/${f.filename}`);
     const reel = reelFiles.length ? `/${reelFiles[0].filename}` : null;
 
     /* ========= SAVE CONTENT ========= */
@@ -51,14 +51,14 @@ exports.createPostWithContent = async (req, res) => {
       images,
       reel,
       title: title || "",
-      music: musicRef, // ✅ saved automatically
+      music: musicRef,
     });
 
     /* ========= SAVE POST ========= */
     const post = await Post.create({
       userId: req.user._id,
       contentId: content._id,
-      musicId: musicRef, // ✅ saved automatically
+      musicId: musicRef, // saved automatically
     });
 
     return res.status(201).json({
@@ -67,7 +67,6 @@ exports.createPostWithContent = async (req, res) => {
       post,
       content,
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,

@@ -15,7 +15,6 @@ exports.addMusic = async (req, res) => {
 
     let title = req.body.title;
 
-    // handle object case
     if (typeof title === "object" && title.title) {
       title = title.title;
     }

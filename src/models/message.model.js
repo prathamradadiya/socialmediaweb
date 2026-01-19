@@ -1,18 +1,25 @@
 const mongoose = require("mongoose");
 
-const messageSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "users",
-    required: true,
-  },
-  postId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "posts",
-    required: true,
-  },
-});
+const messageSchema = new mongoose.Schema(
+  {
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "conversations",
+      required: true,
+    },
 
-const liked_post = mongoose.model("messages", messageSchema);
+    senderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      required: true,
+    },
 
-module.exports = liked_post;
+    text: {
+      type: String,
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("messages", messageSchema);
