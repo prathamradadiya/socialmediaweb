@@ -30,6 +30,8 @@ exports.signup = async (req, res) => {
       bio,
       phoneNumber,
       profilePicture,
+      following_count: 0,
+      follower_count: 0,
     });
 
     await newUser.save();
@@ -102,36 +104,12 @@ exports.login = async (req, res) => {
 };
 
 exports.getUserProfile = async (req, res) => {
-  const { userId } = req.params;
-
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  const isBlocked = await blockUser.findOne({
-    blockedId: userId,
-    blockerId: req.user._id,
-  });
-  if (isBlocked) {
-    let user = await User.findById(userId).select(
-      "-password",
-      "-role",
-      "-status",
-      "-email",
-    );
-  }
-  user = await User.findById(userId).select("-password");
-
-  res.status(200).json(user);
-};
-
-exports.getUserProfile = async (req, res) => {
   try {
     const profileUserId = req.params.userId;
     const viewerId = req.user._id;
 
     const user = await User.findById(profileUserId).select(
-      "username profilePicture bio followers following",
+      "username profilePicture bio follower_count following_count ",
     );
 
     if (!user) {
@@ -146,7 +124,7 @@ exports.getUserProfile = async (req, res) => {
       ],
     });
 
-    // 🔒 LIMITED VIEW IF BLOCKED
+    //LIMITED VIEW IF BLOCKED
     if (isBlocked) {
       return res.status(200).json({
         blocked: true,
@@ -154,13 +132,13 @@ exports.getUserProfile = async (req, res) => {
           username: user.username,
           profilePicture: user.profilePicture,
           bio: user.bio,
-          follower: { $set: { follower: 0 } },
-          following: { $set: { following: 0 } },
+          following_count: 0,
+          follower_count: 0,
         },
       });
     }
 
-    // ✅ FULL PROFILE
+    // FULL PROFILE
     res.status(200).json({
       blocked: false,
       user,

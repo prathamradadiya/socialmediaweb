@@ -17,16 +17,16 @@ const postSchema = new mongoose.Schema(
       ref: "musics",
       default: null,
     },
-    // likesCount: {
-    //     type: Number,
-    //     default: 0,
-    // },
-    // sharesCount: {
-    //     type: Number,
-    //     default: 0,
-    // },
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
+    sharesCount: {
+      type: Number,
+      default: 0,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Post = mongoose.model("posts", postSchema);

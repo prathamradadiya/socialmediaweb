@@ -42,18 +42,12 @@ exports.unblockUser = async (req, res) => {
     const { blockedId } = req.body;
     const currentUserId = req.user._id;
 
-    if (!blockedId) {
-      return res.status(400).json({ error: "Blocked user id required" });
-    }
-
-    const deleted = await BlockedId.findOneAndDelete({
-      blockerId: currentUserId,
-      blockedId: blockedId,
+    await BlockedId.deleteMany({
+      $or: [
+        { blockerId: currentUserId, blockedId },
+        { blockerId: blockedId, blockedId: currentUserId },
+      ],
     });
-
-    if (!deleted) {
-      return res.status(404).json({ error: "User was not blocked" });
-    }
 
     return res.status(200).json({
       success: true,

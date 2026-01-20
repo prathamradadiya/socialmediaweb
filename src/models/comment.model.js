@@ -7,12 +7,14 @@ const commentSchema = new mongoose.Schema(
       ref: "users",
       required: true,
     },
-    text: {
-      type: String,
-      required: true,
-    },
+    text: [
+      {
+        type: String,
+        required: true,
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 const Comment = mongoose.model("comments", commentSchema);
 

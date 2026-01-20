@@ -59,7 +59,7 @@ app.use("/api/message", require("./routes/messageRoutes.js"));
 app.use("/api/conversation", require("./routes/conversationRoutes.js"));
 app.use("/api/req", require("./routes/followRoutes.js"));
 app.use("/api/req", require("./routes/blockRoutes.js"));
-
+app.use("api/apply", require("./routes/likesharecommentRoutes.js"));
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });

@@ -1,18 +1,18 @@
-const mongoose = require("mongoose");
+// const mongoose = require("mongoose");
 
-const shared_postSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "users",
-    required: true,
-  },
-  postId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "posts",
-    required: true,
-  },
-});
+// const shared_postSchema = new mongoose.Schema({
+//   userId: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: "users",
+//     required: true,
+//   },
+//   postId: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: "posts",
+//     required: true,
+//   },
+// });
 
-const liked_post = mongoose.model("like_posts", liked_postSchema);
+// const shared_post = mongoose.model("shared_posts", shared_postSchema);
 
-module.exports = liked_post;
+// module.exports = shared_post;
