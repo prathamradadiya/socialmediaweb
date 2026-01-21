@@ -4,7 +4,7 @@ const {
   likePost,
   sharePost,
   commentPost,
-} = require("../controllers/likesharecomment.controller");
+} = require("../controllers/like.controller");
 
 router.post("/likePost", authMiddleware, likePost);
 router.post("/sharePost", authMiddleware, sharePost);

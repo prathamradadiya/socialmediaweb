@@ -20,7 +20,7 @@ router.post(
   "/signup",
   uploadProfile.single("profilePicture"),
   validate(signupSchema),
-  signup
+  signup,
 );
 router.post("/login", validate(loginSchema), login);
 
@@ -30,7 +30,7 @@ router.get(
   "/profile/:userId",
   authMiddleware,
   checkProfileBlocked,
-  getUserProfile
+  getUserProfile,
 );
 
 module.exports = router;

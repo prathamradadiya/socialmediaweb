@@ -116,7 +116,7 @@ exports.getUserProfile = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // check if block exists (either direction)
+    // check if block exists)
     const isBlocked = await BlockedId.findOne({
       $or: [
         { blockerId: profileUserId, blockedId: viewerId },
@@ -138,7 +138,6 @@ exports.getUserProfile = async (req, res) => {
       });
     }
 
-    // FULL PROFILE
     res.status(200).json({
       blocked: false,
       user,

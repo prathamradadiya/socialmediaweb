@@ -13,14 +13,14 @@ exports.sendMessage = async (req, res) => {
         .json({ message: "conversationId and text required" });
     }
 
-    // 1️⃣ Create message
+    //Create message
     const message = await Message.create({
       conversationId,
       senderId: req.user._id,
-      text, // ✅ CORRECT
+      text,
     });
 
-    // 2️⃣ Update conversation lastMessage
+    //Update conversation lastMessage
     await Conversation.findByIdAndUpdate(conversationId, {
       lastMessage: text.Id,
     });

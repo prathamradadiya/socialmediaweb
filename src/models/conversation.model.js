@@ -16,13 +16,13 @@ const conversationSchema = new mongoose.Schema(
       },
     ],
 
-    lastMessage: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "messages",
-      default: null,
-    },
+    // lastMessage: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "messages",
+    //   default: null,
+    // },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("conversations", conversationSchema);

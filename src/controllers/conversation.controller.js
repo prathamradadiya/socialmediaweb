@@ -1,4 +1,5 @@
 const Conversation = require("../models/conversation.model");
+const User = require("../models/users.model");
 
 exports.createConversation = async (req, res) => {
   try {
@@ -10,6 +11,12 @@ exports.createConversation = async (req, res) => {
 
     if (!receiver_id || receiver_id.length === 0) {
       return res.status(400).json({ message: "receiver_id is required" });
+    }
+
+    const user = await User.findById(receiver_id);
+
+    if (!user) {
+      return res.status(400).json({ message: "user is invalid" });
     }
 
     const conversation = await Conversation.create({
