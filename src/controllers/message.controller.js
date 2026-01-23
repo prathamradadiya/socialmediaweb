@@ -1,58 +1,37 @@
-const Message = require("../models/message.model");
 const Conversation = require("../models/conversation.model");
+const Chat = require("../models/chat.model");
 
-exports.sendMessage = async (req, res) => {
-  try {
-    const { conversationId, text } = req.body;
+exports.createConversation = async (req, res) => {
+  const { userId } = req.body;
 
-    console.log(req.body);
+  const existing = await Conversation.findOne({
+    userId: { $all: [req.user._id, userId] },
+  });
 
-    if (!conversationId || !text) {
-      return res
-        .status(400)
-        .json({ message: "conversationId and text required" });
-    }
+  if (existing) return res.json(existing);
 
-    //Create message
-    const message = await Message.create({
-      conversationId,
-      senderId: req.user._id,
-      text,
-    });
+  const conversation = await Conversation.create({
+    userId: [req.user._id, userId],
+  });
 
-    //Update conversation lastMessage
-    await Conversation.findByIdAndUpdate(conversationId, {
-      lastMessage: text.Id,
-    });
+  const roomId = await Chat.create({
+    roomId: conversation._id,
+  });
 
-    return res.status(201).json({
-      success: true,
-      message,
-    });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
+  res.status(201).json(conversation);
 };
 
-exports.getMessages = async (req, res) => {
-  try {
-    const { conversationId } = req.body;
+// group.controller.js
+const Group = require("../models/group.model");
 
-    if (!conversationId) {
-      return res.status(400).json({ message: "conversationId required" });
-    }
+exports.createGroup = async (req, res) => {
+  const { name, members } = req.body;
 
-    const messages = await Message.find({ conversationId })
-      .populate("senderId", "message")
-      .sort({ createdAt: 1 });
+  const group = await Group.create({
+    name,
+    admin: req.user._id,
+    members: [req.user._id, ...members],
+  });
 
-    return res.status(200).json({
-      success: true,
-      messages,
-    });
-  } catch (err) {
-    return res.status(500).json({
-      error: err.message,
-    });
-  }
+  res.status(201).json(group);
 };

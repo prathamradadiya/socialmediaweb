@@ -1,7 +1,13 @@
 const router = require("express").Router();
-const { authMiddleware } = require("../middlewares/authmiddleware");
-const { followUser } = require("../controllers/follow.controller");
+const { authMiddleware } = require("../middlewares/auth.middleware");
+const {
+  followRequests,
+  getPendingRequests,
+  respondToRequest,
+} = require("../controllers/follow.controller");
 
-router.post("/followUser", authMiddleware, followUser);
+router.post("/followRequests", authMiddleware, followRequests);
+router.post("/getPendingRequests", authMiddleware, getPendingRequests);
+router.post("/respondToRequest", authMiddleware, respondToRequest);
 
 module.exports = router;

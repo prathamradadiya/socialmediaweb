@@ -17,7 +17,7 @@ const contentSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-  music: {
+    music: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Music",
       default: null,
@@ -28,7 +28,7 @@ const contentSchema = new mongoose.Schema(
     //   default: "",
     // },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-module.exports = mongoose.model("Content", contentSchema);
+module.exports = mongoose.model("contents", contentSchema);

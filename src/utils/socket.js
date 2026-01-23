@@ -1,30 +1,20 @@
 const { Server } = require("socket.io");
-const Chat = require("../models/chat.model");
 const { verifyJWT } = require("../controllers/helper/json_web_token");
+const Chat = require("../models/chat.model");
 
 module.exports = (server) => {
-  const io = new Server(server, {
-    cors: { origin: "*" },
-  });
+  const io = new Server(server, { cors: { origin: "*" } });
 
-  // JWT
+  // JWT middleware
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
-
-      if (!token) {
-        return next(new Error("Authentication token missing"));
-      }
+      if (!token) return next(new Error("No token"));
 
       const result = await verifyJWT(token);
+      if (!result.success) return next(new Error("Invalid or expired token"));
 
-      if (!result.success) {
-        return next(new Error("Invalid or expired token"));
-      }
-
-      // save userId on socket
-      socket.userId = result.data.userId;
-
+      socket.userId = result.data.userId; // store userId
       next();
     } catch (err) {
       next(new Error("Invalid token"));
@@ -34,36 +24,42 @@ module.exports = (server) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.userId);
 
-    // Join a personal room
-    socket.join(socket.userId.toString());
+    socket.on("joinChat", async (roomId) => {
+      if (!roomId) return;
 
-    // Listen for sending messages
-    socket.on("sendMessage", async ({ receiverId, text }) => {
-      try {
-        if (!receiverId || !text) return; // validate input
+      socket.join(roomId);
 
-        // Save message to Chat - DB
-        await Chat.create({
-          senderId: socket.userId,
-          receiverId,
-          text,
-          timestamp: new Date(),
-        });
+      const messages = await Chat.find({ roomId }).sort({ timestamp: 1 });
+      socket.emit("chatHistory", messages);
+    });
 
-        // Emit to receiver
-        io.to(receiverId.toString()).emit("receiveMessage", message);
+    socket.on("sendMessage", async ({ roomId, text }) => {
+      if (!roomId || !text) return;
 
-        // Emit to sender for instant UI update
-        socket.emit("receiveMessage", message);
-      } catch (err) {
-        console.error("sendMessage error:", err.message);
-      }
+      const message = {
+        senderId: socket.userId,
+        text,
+        time: new Date(),
+      };
+
+      await Chat.create({
+        senderId: socket.userId,
+        roomId,
+        text,
+        timestamp: new Date(),
+        status: "sent",
+      });
+
+      // Receiver only
+      socket.to(roomId).emit("receiveMessage", message);
+
+      // Sender only
+      socket.emit("messageSent", message);
     });
 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.userId);
     });
   });
-
   return io;
 };

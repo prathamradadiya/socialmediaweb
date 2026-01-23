@@ -3,11 +3,8 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db.js");
 const path = require("path");
 const http = require("http");
-
 dotenv.config();
-
 const PORT = process.env.PORT || 3001;
-
 connectDB();
 
 // APP
@@ -21,20 +18,24 @@ app.use("/api/auth", require("./routes/auth.Routes.js"));
 app.use("/api/content", require("./routes/content.Routes.js"));
 app.use("/api/music", require("./routes/music.Routes.js"));
 app.use("/api/message", require("./routes/message.Routes.js"));
-app.use("/api/conversation", require("./routes/conversation.Routes.js"));
 app.use("/api/req", require("./routes/follow.Routes.js"));
 app.use("/api/req", require("./routes/block.Routes.js"));
-app.use("/api/post", require("./routes/likeRoutes.js"));
+app.use("/api/post", require("./routes/post.Routes.js"));
+app.use("/api/chat", require("./routes/message.Routes"));
+app.use("/api/group", require("./routes/message.Routes"));
+app.use("/api/messages", require("./routes/message.Routes"));
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-// CREATE SERVER
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
+
 const server = http.createServer(app);
 
 // INITIALIZE SOCKET
-require("./utils/socket.js")(server); // pass the HTTP server
+require("./utils/socket.js")(server);
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

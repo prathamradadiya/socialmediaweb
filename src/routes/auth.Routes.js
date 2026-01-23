@@ -3,9 +3,9 @@ const {
   signup,
   login,
   getUserProfile,
-} = require("../controllers/authcontroller");
+} = require("../controllers/auth.controller");
 
-const { authMiddleware } = require("../middlewares/authmiddleware");
+const { authMiddleware } = require("../middlewares/auth.middleware");
 
 const uploadProfile = require("../middlewares/uploadProfileMiddleware");
 

@@ -2,24 +2,21 @@ const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
   {
-    conversationId: {
+    roomId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "conversations",
       required: true,
     },
-
+    chatType: {
+      type: String,
+      enum: ["single", "group"],
+    },
     senderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
-      required: true,
     },
-
-    text: {
-      type: String,
-      required: true,
-    },
+    text: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("messages", messageSchema);

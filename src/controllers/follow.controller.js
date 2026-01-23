@@ -1,51 +1,75 @@
 const FollowUser = require("../models/follow_user.model");
 const User = require("../models/users.model");
+const FollowRequest = require("../models/followRequest.model");
 
-exports.followUser = async (req, res) => {
+// user send follow request
+exports.followRequests = async (req, res) => {
   try {
-    const { followUserId } = req.body;
+    const { receiverId } = req.body;
+    const senderId = req.user._id;
 
-    const currentUserId = req.user._id;
+    //already Sent Request
+    const existing = await FollowRequest.findOne({
+      sender: senderId,
+      receiver: receiverId,
+    });
+    if (existing)
+      return res.status(400).json({ message: "Request already sent" });
 
-    if (!followUserId) {
-      res.status(400).json({ error: "follow user id required" });
-    }
-
-    //not follow to self
-    if (currentUserId.toString() === followUserId) {
-      return res.status(400).json({ error: "You cannot follow yourself" });
-    }
-
-    //Check already followed
-    const alreadyFollowed = await FollowUser.findOne({
-      followingId: currentUserId,
-      followerId: followUserId,
+    //sending request
+    const request = await FollowRequest.create({
+      sender: senderId,
+      receiver: receiverId,
     });
 
-    if (alreadyFollowed) {
-      return res.status(400).json({ error: "Already following this user" });
-    }
+    res.status(201).json({ message: "Follow request sent", request });
+  } catch (err) {}
+};
+
+//User get follow request
+exports.getPendingRequests = async (req, res) => {
+  const userId = req.user._id;
+
+  const requests = await FollowRequest.find({
+    receiver: userId,
+    status: "pending",
+  }).populate("sender", "username profilePicture");
+
+  res.status(200).json(requests);
+};
+
+// accept or reject to request
+exports.respondToRequest = async (req, res) => {
+  const { requestId, action } = req.body;
+
+  const request = await FollowRequest.findById(requestId);
+  if (!request) return res.status(404).json({ message: "Request not found" });
+
+  if (action === "accept") {
+    request.status = "accepted";
+    await request.save();
 
     // Create follow record
     await FollowUser.create({
-      followingId: currentUserId,
-      followerId: followUserId,
+      followingId: request.sender,
+      followerId: request.receiver,
     });
 
     //Update counts
-    await User.findByIdAndUpdate(currentUserId, {
-      $inc: { following_count: 1 },
-    });
-
-    await User.findByIdAndUpdate(followUserId, {
+    await User.findByIdAndUpdate(request.receiver, {
       $inc: { follower_count: 1 },
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "User followed successfully",
+    await User.findByIdAndUpdate(request.sender, {
+      $inc: { following_count: 1 },
     });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+
+    return res.status(200).json({ message: "Request accepted" });
+  } else if (action === "reject") {
+    request.status = "rejected";
+    await request.save();
+    return res.status(200).json({ message: "Request rejected" });
+  } else {
+    return res.status(400).json({ message: "Invalid action" });
   }
 };

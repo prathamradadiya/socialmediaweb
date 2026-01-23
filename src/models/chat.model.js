@@ -2,7 +2,11 @@ const mongoose = require("mongoose");
 
 const chatSchema = new mongoose.Schema(
   {
-    roomId: String,
+    roomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "conversations",
+      required: true,
+    },
 
     senderId: {
       type: mongoose.Schema.Types.ObjectId,

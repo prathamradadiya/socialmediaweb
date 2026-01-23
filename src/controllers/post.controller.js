@@ -3,6 +3,8 @@ const sharePost = require("../models/sharedpost.model");
 const commentPost = require("../models/comment.model");
 const Post = require("../models/post.model");
 
+//likes
+
 exports.likePost = async (req, res) => {
   try {
     const { postId } = req.body;
@@ -47,6 +49,8 @@ exports.likePost = async (req, res) => {
   }
 };
 
+//share
+
 exports.sharePost = async (req, res) => {
   try {
     const { postId, sharedUserId } = req.body;
@@ -84,6 +88,8 @@ exports.sharePost = async (req, res) => {
   }
 };
 
+//Comments
+
 exports.commentPost = async (req, res) => {
   try {
     const { postId, comment } = req.body;
@@ -117,5 +123,42 @@ exports.commentPost = async (req, res) => {
       .json({ success: true, message: "Comment Added Successfully" });
   } catch (err) {
     return res.status(500).json({ error: err.message });
+  }
+};
+
+//get posts by tag
+const Tag = require("../models/tags.model");
+
+exports.getPostByTag = async (req, res) => {
+  try {
+    let { tag } = req.params;
+
+    if (!tag) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Tag is required" });
+    }
+
+    // // Normalize tag
+    // tag = tag.startsWith("#") ? tag.toLowerCase() : `#${tag.toLowerCase()}`;
+
+    const posts = await Tag.find({ tagName: tag }).populate({
+      path: "postId",
+      populate: [
+        { path: "userId", select: "username profilePicture" },
+        { path: "contentId" },
+      ],
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: posts.length,
+      posts,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };

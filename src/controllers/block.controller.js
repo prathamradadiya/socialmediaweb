@@ -4,7 +4,6 @@ const User = require("../models/users.model");
 exports.blockUser = async (req, res) => {
   try {
     const { blockedId } = req.body;
-
     const currentUserId = req.user._id;
 
     if (!blockedId) {
@@ -37,6 +36,8 @@ exports.blockUser = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+//for unblock
 exports.unblockUser = async (req, res) => {
   try {
     const { blockedId } = req.body;

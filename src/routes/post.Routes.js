@@ -1,12 +1,16 @@
 const router = require("express").Router();
-const { authMiddleware } = require("../middlewares/authmiddleware");
+const { authMiddleware } = require("../middlewares/auth.middleware");
+
 const {
   likePost,
   sharePost,
   commentPost,
-} = require("../controllers/like.controller");
+} = require("../controllers/post.controller");
+const { getPostByTag } = require("../controllers/post.controller");
 
 router.post("/likePost", authMiddleware, likePost);
 router.post("/sharePost", authMiddleware, sharePost);
 router.post("/commentPost", authMiddleware, commentPost);
+router.get("/getPostByTag/:tag", authMiddleware, getPostByTag);
+
 module.exports = router;
