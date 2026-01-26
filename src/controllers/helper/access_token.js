@@ -34,7 +34,7 @@ exports.refreshAccessToken = async (req, res) => {
       throw new Error("Token generation failed");
     }
 
-    // 🍪 Set new access token
+    // Set new access token
     res.cookie("accessToken", accessToken.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

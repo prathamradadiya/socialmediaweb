@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 /**
  * Create JWT token
  */
-const createJWT = async ({ data, expiry_time = "1h" }) => {
+const createJWT = async ({ data, expiry_time = "3h" }) => {
   try {
     const token = jwt.sign(data, process.env.JWT_SECRET, {
       expiresIn: expiry_time,

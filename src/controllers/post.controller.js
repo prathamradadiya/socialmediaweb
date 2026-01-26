@@ -126,12 +126,19 @@ exports.commentPost = async (req, res) => {
   }
 };
 
-//get posts by tag
 const Tag = require("../models/tags.model");
+const {
+  getPaginationMetadata,
+  getPaginatedResponse,
+} = require("../controllers/helper/pagination");
 
 exports.getPostByTag = async (req, res) => {
   try {
     let { tag } = req.params;
+    const { page, limit, offset } = getPaginationMetadata(
+      req.query.page,
+      req.query.limit,
+    );
 
     if (!tag) {
       return res
@@ -139,22 +146,32 @@ exports.getPostByTag = async (req, res) => {
         .json({ success: false, message: "Tag is required" });
     }
 
-    // // Normalize tag
-    // tag = tag.startsWith("#") ? tag.toLowerCase() : `#${tag.toLowerCase()}`;
+    // Normalize tag (recommended)
+    tag = tag.startsWith("#") ? tag.toLowerCase() : `#${tag.toLowerCase()}`;
 
-    const posts = await Tag.find({ tagName: tag }).populate({
-      path: "postId",
-      populate: [
-        { path: "userId", select: "username profilePicture" },
-        { path: "contentId" },
-      ],
-    });
+    const tags = await Tag.find({ tagName: tag })
+      .skip(offset)
+      .limit(limit)
+      .populate({
+        path: "postId",
+        populate: [
+          { path: "userId", select: "username profilePicture" },
+          { path: "contentId" },
+        ],
+      });
 
-    return res.status(200).json({
-      success: true,
-      count: posts.length,
-      posts,
-    });
+    const total = await Tag.countDocuments({ tagName: tag });
+
+    return res.status(200).json(
+      getPaginatedResponse(
+        {
+          rows: tags.map((t) => t.postId),
+          count: total,
+        },
+        page,
+        limit,
+      ),
+    );
   } catch (err) {
     return res.status(500).json({
       success: false,

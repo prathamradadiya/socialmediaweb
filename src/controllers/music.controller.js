@@ -1,5 +1,6 @@
 const Music = require("../models/music.model");
 
+//ADD MUSIC
 exports.addMusic = async (req, res) => {
   try {
     // imp

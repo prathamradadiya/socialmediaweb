@@ -10,10 +10,15 @@ const signupSchema = Joi.object({
     "any.required": "Username is required",
   }),
 
-  email: Joi.string().email().lowercase().required().messages({
-    "string.email": "Please provide a valid email address",
-    "any.required": "Email is required",
-  }),
+  email: Joi.string()
+    .lowercase()
+    .pattern(/^[a-z0-9._%+-]+@(gmail\.com|outlook\.com)$/)
+    .required()
+    .messages({
+      "string.pattern.base":
+        "Only Gmail or Outlook email addresses are allowed",
+      "any.required": "Email is required",
+    }),
 
   password: Joi.string()
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/)
@@ -26,10 +31,10 @@ const signupSchema = Joi.object({
   role: Joi.string().valid("user", "admin").optional(),
 
   phoneNumber: Joi.string()
-    .pattern(/^[0-9]{10}$/)
+    .pattern(/^\+91[0-9]{10}$/)
     .required()
     .messages({
-      "string.pattern.base": "Phone number must be 10 digits",
+      "string.pattern.base": "Phone number must be in format +911234567890",
     }),
 
   bio: Joi.string().allow("").optional(),

@@ -6,41 +6,56 @@ const { StatusCodes } = require("http-status-codes");
 const FollowUser = require("../models/follow_user.model");
 const Post = require("../models/post.model");
 const BlockedId = require("../models/blocked_acc.model");
+const OTP = require("../models/otp.model");
+const crypto = require("crypto");
+const jwt = require("jsonwebtoken");
+
+const sendEmail = require("../controllers/helper/email");
 /* ===================== SIGNUP ===================== */
 exports.signup = async (req, res) => {
   try {
     const { username, email, password, role, phoneNumber, bio } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(StatusCodes.CONFLICT).json({
-        message: "User already exists",
+    // Basic validation
+    if (!username || !email || !password || !phoneNumber) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        message: "Required fields are missing",
       });
     }
 
+    // Check if username OR email already exists
+    const existingUser = await User.findOne({
+      $or: [{ username }, { email }],
+    });
+
+    if (existingUser) {
+      return res.status(StatusCodes.CONFLICT).json({
+        message: "Username or email already exists",
+      });
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Profile picture
-    const profilePicture = req.file ? `/${req.file.filename}` : "";
+    // Profile picture (multer)
+    const profilePicture = req.file ? req.file.filename : "";
 
-    // Create new user
-    const newUser = new User({
+    // Create user
+    const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
-      role,
-      bio,
+      role: role || "user",
       phoneNumber,
+      bio: bio || "",
       profilePicture,
       following_count: 0,
       follower_count: 0,
     });
 
-    await newUser.save();
-
     return res.status(StatusCodes.CREATED).json({
       message: "User registered successfully",
+      userId: newUser._id,
     });
   } catch (error) {
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
@@ -50,7 +65,78 @@ exports.signup = async (req, res) => {
   }
 };
 
-// /* ===================== LOGIN ===================== */
+// //send otp
+
+// exports.sendOtp = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+//     if (!email) return res.status(400).json({ message: "Email required" });
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+//     const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+//     await OTP.deleteMany({ email });
+
+//     await OTP.create({
+//       email,
+//       otp: hashedOtp,
+//       expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min
+//     });
+
+//     await sendEmail(email, "Your OTP", `Your OTP is ${otp}`);
+
+//     res.status(200).json({ success: true, message: "OTP sent" });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+// //verify OTP
+
+// exports.verifyOtp = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+
+//     const record = await OTP.findOne({ email });
+//     if (!record) return res.status(400).json({ message: "OTP expired" });
+
+//     if (record.expiresAt < Date.now())
+//       return res.status(400).json({ message: "OTP expired" });
+
+//     const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+//     if (hashedOtp !== record.otp)
+//       return res.status(400).json({ message: "Invalid OTP" });
+
+//     let user = await User.findOne({ email });
+
+//     if (!user) {
+//       user = await User.create({
+//         email,
+//         isVerified: true,
+//       });
+//     } else {
+//       user.isVerified = true;
+//       await user.save();
+//     }
+
+//     await OTP.deleteMany({ email });
+
+//     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+//       expiresIn: "7d",
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       token,
+//       user,
+//     });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
 // exports.login = async (req, res) => {
 //   try {
 //     const { email, password } = req.body;
@@ -89,6 +175,14 @@ exports.signup = async (req, res) => {
 //       });
 //     }
 
+//     // ADD ACCESS TOKEN COOKIE HERE
+//     res.cookie("accessToken", tokenResult.token, {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production",
+//       sameSite: "strict",
+//       maxAge: 60 * 60 * 1000, // 1 hour
+//     });
+
 //     return res.status(StatusCodes.OK).json({
 //       message: "Login successful",
 //       token: tokenResult.token,
@@ -106,53 +200,98 @@ exports.signup = async (req, res) => {
 //   }
 // };
 
-exports.login = async (req, res) => {
+//LOGIN
+exports.loginWithPassword = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        message: "Email and password are required",
-      });
+      return res.status(400).json({ message: "Email & password required" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
-        message: "Invalid email or password",
-      });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
-        message: "Invalid email or password",
-      });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    console.log(`otp:` + otp);
+
+    await OTP.deleteMany({ email });
+
+    await OTP.create({
+      email,
+      otp: hashedOtp,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+    });
+
+    await sendEmail(email, "Login OTP", `Your OTP is ${otp}`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Password verified. OTP sent to email",
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// VERIFY OTP
+exports.verifyLoginOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email & OTP required" });
+    }
+
+    const record = await OTP.findOne({ email });
+    if (!record) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    if (record.expiresAt < Date.now()) {
+      await OTP.deleteMany({ email });
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // Compare OTP using bcrypt
+    const isValidOtp = await bcrypt.compare(otp, record.otp);
+    if (!isValidOtp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await OTP.deleteMany({ email });
 
     const tokenResult = await createJWT({
       data: {
         userId: user._id,
         role: user.role,
       },
-      expiry_time: "1h",
+      expiry_time: "7d",
     });
 
-    if (!tokenResult.success) {
-      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-        message: tokenResult.message,
-      });
-    }
-
-    // ADD ACCESS TOKEN COOKIE HERE
     res.cookie("accessToken", tokenResult.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 60 * 60 * 1000, // 1 hour
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    return res.status(StatusCodes.OK).json({
+    return res.status(200).json({
+      success: true,
       message: "Login successful",
       token: tokenResult.token,
       user: {
@@ -161,15 +300,12 @@ exports.login = async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
-    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-      message: "Server error",
-      error: error.message,
-    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-//search user profile
+//SEARCH USER PROFILE
 exports.getUserProfile = async (req, res) => {
   try {
     const profileUserId = req.params.userId;

@@ -3,6 +3,7 @@ const Post = require("../models/post.model");
 const Music = require("../models/music.model");
 const Tag = require("../models/tags.model");
 
+//CREATE POST
 exports.createPostWithContent = async (req, res) => {
   try {
     if (!req.user?._id) {

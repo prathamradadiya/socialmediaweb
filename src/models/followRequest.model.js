@@ -13,8 +13,8 @@ const followRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected"],
-      default: "pending",
+      enum: ["requested", "accepted", "rejected"],
+      default: "requested",
     },
   },
   { timestamps: true },

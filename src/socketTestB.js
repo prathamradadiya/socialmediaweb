@@ -1,47 +1,41 @@
-const { io } = require("socket.io-client");
+// const { io } = require("socket.io-client");
 
-const socket = io("http://localhost:3001", {
-  auth: {
-    token:
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTcxMjVmNjVkYWJjNWJjNzZkMjQ4MjgiLCJyb2xlIjoidXNlciIsImlhdCI6MTc2OTEwOTM5NywiZXhwIjoxNzY5MTEyOTk3fQ.BoCxC-pgmlBBfmRoqI-N4nic6oMAol425rhmUml1ONc",
-  },
-  transports: ["websocket"],
-});
-// Connected
-socket.on("connect", () => {
-  console.log("Connected:", socket.id);
+// const socket = io("http://localhost:3001", {
+//   auth: {
+//     token:
+//       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTcxMjVmNjVkYWJjNWJjNzZkMjQ4MjgiLCJyb2xlIjoidXNlciIsImlhdCI6MTc2OTIwMzMzNSwiZXhwIjoxNzY5MjA2OTM1fQ.Zg_m-MZOyINST5o0D572xtk5jQyTbn1dasPPC8AxwW8",
+//   },
+//   transports: ["websocket"],
+// });
 
-  const roomId = "69724c62a3babeb1a124d21f";
-  socket.emit("joinChat", roomId);
-});
+// socket.on("connect", () => {
+//   console.log("User B Connected:", socket.id);
 
-// Chat history
-socket.on("chatHistory", (messages) => {
-  console.log("Chat history:", messages);
+//   const roomId = "697277727692060038e486b1";
+//   socket.emit("joinChat", { roomId });
+// });
 
-  // Send message AFTER join success
-  socket.emit("sendMessage", {
-    roomId: "697277727692060038e486b1",
-    text: "yes",
-  });
-});
+// socket.on("chatHistory", (messages) => {
+//   console.log("User B Chat history:", messages);
 
-//Incoming message (receiver)
-socket.on("receiveMessage", (data) => {
-  console.log("Message received:", data);
-});
+//   socket.emit("sendMessage", {
+//     roomId: "697277727692060038e486b1",
+//     text: "Hello from User B",
+//   });
+// });
 
-// Message sent (sender)
-socket.on("messageSent", (data) => {
-  console.log("Message sent:", data);
-});
+// socket.on("receiveMessage", (data) => {
+//   console.log("User B Received:", data);
+// });
 
-//Error handling
-socket.on("connect_error", (err) => {
-  console.log("Connection error:", err.message);
-});
+// socket.on("messageSent", (data) => {
+//   console.log("User B Sent:", data);
+// });
 
-//Disconnected
-socket.on("disconnect", () => {
-  console.log("Disconnected from server");
-});
+// socket.on("connect_error", (err) => {
+//   console.log("User B Connection error:", err.message);
+// });
+
+// socket.on("disconnect", () => {
+//   console.log("User B Disconnected");
+// });

@@ -1,20 +1,26 @@
 const { Server } = require("socket.io");
 const { verifyJWT } = require("../controllers/helper/json_web_token");
 const Chat = require("../models/chat.model");
+const mongoose = require("mongoose");
 
 module.exports = (server) => {
   const io = new Server(server, { cors: { origin: "*" } });
 
-  // JWT middleware
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
+      const token =
+        socket.handshake.auth?.token ||
+        socket.handshake.headers?.authorization
+          ?.replace(/^Bearer\s+/i, "")
+          .trim() ||
+        socket.handshake.query?.token;
+
       if (!token) return next(new Error("No token"));
 
       const result = await verifyJWT(token);
       if (!result.success) return next(new Error("Invalid or expired token"));
 
-      socket.userId = result.data.userId; // store userId
+      socket.userId = result.data.userId;
       next();
     } catch (err) {
       next(new Error("Invalid token"));
@@ -24,8 +30,13 @@ module.exports = (server) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.userId);
 
-    socket.on("joinChat", async (roomId) => {
-      if (!roomId) return;
+    socket.on("joinChat", async (data) => {
+      const roomId = data?.roomId?.trim();
+
+      if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
+        return socket.emit("error", "Invalid roomId");
+      }
+      console.log(roomId);
 
       socket.join(roomId);
 
@@ -46,12 +57,10 @@ module.exports = (server) => {
         senderId: socket.userId,
         roomId,
         text,
-        timestamp: new Date(),
         status: "sent",
       });
 
-      // Receiver only
-      socket.to(roomId).emit("receiveMessage", message);
+      io.to(roomId).emit("receiveMessage", message);
 
       // Sender only
       socket.emit("messageSent", message);
@@ -61,5 +70,6 @@ module.exports = (server) => {
       console.log("User disconnected:", socket.userId);
     });
   });
+
   return io;
 };

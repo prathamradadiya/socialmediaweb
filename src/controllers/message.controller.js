@@ -1,6 +1,8 @@
 const Conversation = require("../models/conversation.model");
 const Chat = require("../models/chat.model");
+const Group = require("../models/group.model");
 
+//.   CREATE CONVERSATION
 exports.createConversation = async (req, res) => {
   const { userId } = req.body;
 
@@ -8,8 +10,12 @@ exports.createConversation = async (req, res) => {
     userId: { $all: [req.user._id, userId] },
   });
 
-  if (existing) return res.json(existing);
-
+  if (existing) {
+    return res.status(200).json({
+      message: "Conversation already exists",
+      conversation: existing,
+    });
+  }
   const conversation = await Conversation.create({
     userId: [req.user._id, userId],
   });
@@ -21,9 +27,7 @@ exports.createConversation = async (req, res) => {
   res.status(201).json(conversation);
 };
 
-// group.controller.js
-const Group = require("../models/group.model");
-
+//   CREATE GROUP
 exports.createGroup = async (req, res) => {
   const { name, members } = req.body;
 
