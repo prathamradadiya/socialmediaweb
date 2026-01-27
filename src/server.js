@@ -17,13 +17,10 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api/auth", require("./routes/auth.Routes.js"));
 app.use("/api/content", require("./routes/content.Routes.js"));
 app.use("/api/music", require("./routes/music.Routes.js"));
-app.use("/api/message", require("./routes/message.Routes.js"));
 app.use("/api/req", require("./routes/follow.Routes.js"));
 app.use("/api/req", require("./routes/block.Routes.js"));
 app.use("/api/post", require("./routes/post.Routes.js"));
-app.use("/api/chat", require("./routes/message.Routes"));
-app.use("/api/group", require("./routes/message.Routes"));
-app.use("/api/messages", require("./routes/message.Routes"));
+app.use("/api/chat", require("./routes/message.Routes.js"));
 
 app.get("/", (req, res) => {
   res.send("Hello World!");

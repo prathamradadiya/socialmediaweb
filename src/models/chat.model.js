@@ -12,11 +12,20 @@ const chatSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "users",
     },
-    receiverId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "users",
-    },
     text: String,
+
+    attachments: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "uploads", // media collection
+      },
+    ],
+    messageType: {
+      type: String,
+      enum: ["text", "media", "post"],
+      default: "text",
+    },
+    contentId: { type: mongoose.Schema.Types.ObjectId, ref: "contents" },
   },
   { timestamps: true },
 );

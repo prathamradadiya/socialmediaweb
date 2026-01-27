@@ -1,69 +1,112 @@
 const { Server } = require("socket.io");
-const { verifyJWT } = require("../controllers/helper/json_web_token");
+const socketAuth = require("../middlewares/socketAuth.Middleware");
 const Chat = require("../models/chat.model");
 const mongoose = require("mongoose");
 
 module.exports = (server) => {
   const io = new Server(server, { cors: { origin: "*" } });
 
-  io.use(async (socket, next) => {
-    try {
-      const token =
-        socket.handshake.auth?.token ||
-        socket.handshake.headers?.authorization
-          ?.replace(/^Bearer\s+/i, "")
-          .trim() ||
-        socket.handshake.query?.token;
-
-      if (!token) return next(new Error("No token"));
-
-      const result = await verifyJWT(token);
-      if (!result.success) return next(new Error("Invalid or expired token"));
-
-      socket.userId = result.data.userId;
-      next();
-    } catch (err) {
-      next(new Error("Invalid token"));
-    }
-  });
+  // Auth middleware
+  io.use(socketAuth);
 
   io.on("connection", (socket) => {
     console.log("User connected:", socket.userId);
 
-    socket.on("joinChat", async (data) => {
-      const roomId = data?.roomId?.trim();
-
+    // Join chat room
+    socket.on("joinChat", async ({ roomId }) => {
       if (!roomId || !mongoose.Types.ObjectId.isValid(roomId)) {
         return socket.emit("error", "Invalid roomId");
       }
-      console.log(roomId);
 
       socket.join(roomId);
 
-      const messages = await Chat.find({ roomId }).sort({ timestamp: 1 });
+      const messages = await Chat.find({ roomId })
+        .sort({ createdAt: -1 })
+        .populate({
+          path: "attachments",
+          select: "_id userId url type size",
+        })
+        .populate({
+          path: "contentId",
+          select: "_id title type url",
+        });
+
+      //give history while join room
       socket.emit("chatHistory", messages);
     });
 
-    socket.on("sendMessage", async ({ roomId, text }) => {
-      if (!roomId || !text) return;
+    // // Send message
+    // socket.on(
+    //   "sendMessage",
+    //   async ({ roomId, text, attachments, contentId }) => {
+    //     try {
+    //       if (!roomId || (!text && !attachments?.length && !contentId)) return;
 
-      const message = {
-        senderId: socket.userId,
-        text,
-        time: new Date(),
-      };
+    //       let messageType = "text";
+    //       if (attachments?.length) messageType = "media";
+    //       else if (contentId) messageType = "post";
 
-      await Chat.create({
-        senderId: socket.userId,
-        roomId,
-        text,
-        status: "sent",
-      });
+    //       // Create chat
+    //       const chatData = await Chat.create({
+    //         roomId,
+    //         senderId: socket.userId,
+    //         text: text || null,
+    //         messageType,
+    //         attachments: attachments || [],
+    //         contentId: contentId || null,
+    //       });
 
-      io.to(roomId).emit("receiveMessage", message);
+    //       // Populate attachments and contentId for receiver
+    //       const populatedChat = await Chat.findById(chatData._id)
+    //         .populate({
+    //           path: "attachments",
+    //           select: "_id userId url type size",
+    //         })
+    //         .populate({
+    //           path: "contentId",
+    //           select: "_id userId type images reel music  createdAt updatedAt",
+    //         });
 
-      // Sender only
-      socket.emit("messageSent", message);
+    //       // Receive Message
+    //       io.to(roomId).emit("receiveMessage", populatedChat);
+
+    //       socket.emit("messageSent", populatedChat);
+    //     } catch (err) {
+    //       console.error("sendMessage error:", err.message);
+    //       socket.emit("error", err.message);
+    //     }
+    //   },
+    // );
+
+    socket.on("sendMessage", async (payload) => {
+      try {
+        const { roomId, text, attachments, contentId } = payload;
+
+        if (!roomId) return;
+
+        const messageType = attachments?.length
+          ? "media"
+          : contentId
+            ? "post"
+            : "text";
+
+        const chat = await Chat.create({
+          roomId,
+          senderId: socket.userId,
+          text,
+          messageType,
+          attachments,
+          contentId,
+        });
+
+        const populated = await Chat.findById(chat._id)
+          .populate("attachments", "url type size")
+          .populate("contentId", "type images reel");
+
+        io.to(roomId).emit("receiveMessage", populated);
+      } catch (err) {
+        socket.emit("error", "Message failed");
+      }
     });
 
     socket.on("disconnect", () => {

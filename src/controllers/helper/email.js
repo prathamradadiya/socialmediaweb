@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 
+//TRANSPORTER
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -8,6 +9,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+//SEND EMAIL
 const sendEmail = async (to, subject, text) => {
   await transporter.sendMail({
     from: `"Instagram" <${process.env.EMAIL_USER}>`,

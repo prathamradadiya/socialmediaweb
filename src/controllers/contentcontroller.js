@@ -94,3 +94,44 @@ exports.createPostWithContent = async (req, res) => {
     });
   }
 };
+const Upload = require("../models/uploads.model");
+
+exports.uploadMedia = async (req, res) => {
+  try {
+    if (!req.files || Object.keys(req.files).length === 0) {
+      return res.status(400).json({ message: "No media uploaded" });
+    }
+
+    const uploadedDocs = [];
+
+    const saveFile = async (file, type) => {
+      const doc = await Upload.create({
+        userId: req.user._id,
+        url: `/uploads/chat/${file.filename}`,
+        type,
+        mimeType: file.mimetype,
+        size: file.size,
+      });
+      uploadedDocs.push(doc);
+    };
+
+    if (req.files.images) {
+      for (const file of req.files.images) {
+        await saveFile(file, "image");
+      }
+    }
+
+    if (req.files.reel) {
+      for (const file of req.files.reel) {
+        await saveFile(file, "video");
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      uploads: uploadedDocs,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
