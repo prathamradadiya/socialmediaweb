@@ -65,141 +65,6 @@ exports.signup = async (req, res) => {
   }
 };
 
-// //send otp
-
-// exports.sendOtp = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-//     if (!email) return res.status(400).json({ message: "Email required" });
-
-//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-//     const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
-
-//     await OTP.deleteMany({ email });
-
-//     await OTP.create({
-//       email,
-//       otp: hashedOtp,
-//       expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min
-//     });
-
-//     await sendEmail(email, "Your OTP", `Your OTP is ${otp}`);
-
-//     res.status(200).json({ success: true, message: "OTP sent" });
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// };
-
-// //verify OTP
-
-// exports.verifyOtp = async (req, res) => {
-//   try {
-//     const { email, otp } = req.body;
-
-//     const record = await OTP.findOne({ email });
-//     if (!record) return res.status(400).json({ message: "OTP expired" });
-
-//     if (record.expiresAt < Date.now())
-//       return res.status(400).json({ message: "OTP expired" });
-
-//     const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
-
-//     if (hashedOtp !== record.otp)
-//       return res.status(400).json({ message: "Invalid OTP" });
-
-//     let user = await User.findOne({ email });
-
-//     if (!user) {
-//       user = await User.create({
-//         email,
-//         isVerified: true,
-//       });
-//     } else {
-//       user.isVerified = true;
-//       await user.save();
-//     }
-
-//     await OTP.deleteMany({ email });
-
-//     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-//       expiresIn: "7d",
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       token,
-//       user,
-//     });
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// };
-
-// exports.login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     if (!email || !password) {
-//       return res.status(StatusCodes.BAD_REQUEST).json({
-//         message: "Email and password are required",
-//       });
-//     }
-
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//       return res.status(StatusCodes.UNAUTHORIZED).json({
-//         message: "Invalid email or password",
-//       });
-//     }
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) {
-//       return res.status(StatusCodes.UNAUTHORIZED).json({
-//         message: "Invalid email or password",
-//       });
-//     }
-
-//     const tokenResult = await createJWT({
-//       data: {
-//         userId: user._id,
-//         role: user.role,
-//       },
-//       expiry_time: "1h",
-//     });
-
-//     if (!tokenResult.success) {
-//       return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-//         message: tokenResult.message,
-//       });
-//     }
-
-//     // ADD ACCESS TOKEN COOKIE HERE
-//     res.cookie("accessToken", tokenResult.token, {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === "production",
-//       sameSite: "strict",
-//       maxAge: 60 * 60 * 1000, // 1 hour
-//     });
-
-//     return res.status(StatusCodes.OK).json({
-//       message: "Login successful",
-//       token: tokenResult.token,
-//       user: {
-//         id: user._id,
-//         email: user.email,
-//         role: user.role,
-//       },
-//     });
-//   } catch (error) {
-//     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-//       message: "Server error",
-//       error: error.message,
-//     });
-//   }
-// };
-
 //LOGIN
 exports.loginWithPassword = async (req, res) => {
   try {
@@ -357,5 +222,28 @@ exports.getUserProfile = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+//LOGOUT
+exports.logout = async (req, res) => {
+  try {
+    // ✅ If token is in HTTP-only cookie
+    res.cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0), // Expire immediately
+    });
+
+    // ✅ Return success
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Logout failed",
+      error: error.message,
+    });
   }
 };

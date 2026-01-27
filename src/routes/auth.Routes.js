@@ -4,6 +4,7 @@ const {
   getUserProfile,
   loginWithPassword,
   verifyLoginOtp,
+  logout,
 } = require("../controllers/auth.controller");
 
 const { authMiddleware } = require("../middlewares/auth.middleware");
@@ -26,6 +27,10 @@ router.post(
 
 //LOGIN ROUTES
 router.post("/login", validate(loginSchema), loginWithPassword);
+
+//LOGOUT
+
+router.post("/logout", authMiddleware, logout);
 
 //VERIFY OTP ROUTES
 router.post("/verify-otp", verifyLoginOtp);

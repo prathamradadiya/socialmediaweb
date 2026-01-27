@@ -7,13 +7,13 @@ const otpSchema = new mongoose.Schema(
       required: true,
     },
     otp: {
-      type: String, // hashed OTP
+      type: String,
       required: true,
     },
     expiresAt: {
       type: Date,
       required: true,
-      expires: 300, // 5 minutes TTL
+      expires: 300,
     },
   },
   { timestamps: true },
