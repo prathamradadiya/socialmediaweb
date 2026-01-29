@@ -2,16 +2,18 @@ const router = require("express").Router();
 const {
   signup,
   getUserProfile,
+  updateProfile,
   loginWithPassword,
   verifyLoginOtp,
   logout,
 } = require("../controllers/auth.controller");
 
 const { authMiddleware } = require("../middlewares/auth.middleware");
-const uploadProfile = require("../middlewares/uploadProfileMiddleware");
+// const uploadProfile = require("../middlewares/uploadProfileMiddleware");
 const {
   loginSchema,
   signupSchema,
+  updateProfileSchema,
 } = require("../validation/schemas/users.schema");
 const { validate } = require("../middlewares/validation.middleware");
 
@@ -29,6 +31,15 @@ router.post("/signup", validate(signupSchema), signup);
 
 //LOGIN ROUTES
 router.post("/login", validate(loginSchema), loginWithPassword);
+
+//Update User
+
+router.put(
+  "/updateProfile",
+  authMiddleware,
+  validate(updateProfileSchema),
+  updateProfile,
+);
 
 //LOGOUT
 

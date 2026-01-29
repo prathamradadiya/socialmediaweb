@@ -7,10 +7,10 @@ const FollowUser = require("../models/follow_user.model");
 const Post = require("../models/post.model");
 const BlockedId = require("../models/blocked_acc.model");
 const OTP = require("../models/otp.model");
-
-const sendEmail = require("../controllers/helper/email");
+const client = require("../config/sendgrid");
+//const sendEmail = require("../controllers/helper/email");
 const uploadToCloudinary = require("../utils/uploader");
-/* ===================== SIGNUP ===================== */
+/* ================================= SIGNUP ===================== */
 exports.signup = async (req, res) => {
   try {
     const { username, email, password, phoneNumber, bio } = req.body;
@@ -66,7 +66,7 @@ exports.signup = async (req, res) => {
         id: newUser._id,
         username: newUser.username,
         email: newUser.email,
-        profilePicture: newUser.profilePicture,
+        profilePicture: profilePictureName,
       },
     });
   } catch (error) {
@@ -77,7 +77,9 @@ exports.signup = async (req, res) => {
     });
   }
 };
-//LOGIN
+
+//================================LOGIN=================================================
+
 exports.loginWithPassword = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -96,20 +98,30 @@ exports.loginWithPassword = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Generate OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedOtp = await bcrypt.hash(otp, 10);
-    console.log(`otp:` + otp);
+    // // Generate OTP
+    // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // const hashedOtp = await bcrypt.hash(otp, 10);
+    // console.log(`otp:` + otp);
 
-    await OTP.deleteMany({ email });
+    // await OTP.deleteMany({ email });
 
-    await OTP.create({
-      email,
-      otp: hashedOtp,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-    });
+    // await OTP.create({
+    //   email,
+    //   otp: hashedOtp,
+    //   expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+    // });
 
-    await sendEmail(email, "Login OTP", `Your OTP is ${otp}`);
+    // await sendEmail(email, "Login OTP", `Your OTP is ${otp}`);
+
+    // SEND OTP VIA TWILIO VERIFY (EMAIL)
+    const verification = await client.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
+      .verifications.create({
+        to: email,
+        channel: "email",
+      });
+
+    console.log(verification);
 
     return res.status(200).json({
       success: true,
@@ -120,7 +132,8 @@ exports.loginWithPassword = async (req, res) => {
   }
 };
 
-// VERIFY OTP
+// ==============================VERIFY OTP======================================
+
 exports.verifyLoginOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -129,28 +142,40 @@ exports.verifyLoginOtp = async (req, res) => {
       return res.status(400).json({ message: "Email & OTP required" });
     }
 
-    const record = await OTP.findOne({ email });
-    if (!record) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
+    // const record = await OTP.findOne({ email });
+    // if (!record) {
+    //   return res.status(400).json({ message: "OTP expired" });
+    // }
 
-    if (record.expiresAt < Date.now()) {
-      await OTP.deleteMany({ email });
-      return res.status(400).json({ message: "OTP expired" });
-    }
+    // if (record.expiresAt < Date.now()) {
+    //   await OTP.deleteMany({ email });
+    //   return res.status(400).json({ message: "OTP expired" });
+    // }
 
-    // Compare OTP using bcrypt
-    const isValidOtp = await bcrypt.compare(otp, record.otp);
-    if (!isValidOtp) {
-      return res.status(400).json({ message: "Invalid OTP" });
+    // // Compare OTP using bcrypt
+    // const isValidOtp = await bcrypt.compare(otp, record.otp);
+    // if (!isValidOtp) {
+    //   return res.status(400).json({ message: "Invalid OTP" });
+    // }
+
+    //await OTP.deleteMany({ email });
+
+    // VERIFY OTP WITH TWILIO
+    const verificationCheck = await client.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
+      .verificationChecks.create({
+        to: email,
+        code: otp,
+      });
+    console.log(verificationCheck.status);
+    if (verificationCheck.status !== "approved") {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    await OTP.deleteMany({ email });
 
     const tokenResult = await createJWT({
       data: {
@@ -182,7 +207,7 @@ exports.verifyLoginOtp = async (req, res) => {
   }
 };
 
-//SEARCH USER PROFILE
+//===============================SEARCH USER PROFILE=======================================
 exports.getUserProfile = async (req, res) => {
   try {
     const profileUserId = req.params.userId;
@@ -237,7 +262,7 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
-//LOGOUT
+//======================================LOGOUT=======================================
 exports.logout = async (req, res) => {
   try {
     // ✅ If token is in HTTP-only cookie
@@ -255,6 +280,74 @@ exports.logout = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Logout failed",
+      error: error.message,
+    });
+  }
+};
+
+// ========================================Update User Profile========================
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { username, bio, phoneNumber } = req.body;
+    let profilePictureFile = req.files?.profilePictureImage;
+
+    console.log(profilePictureFile);
+
+    const updates = {};
+    if (username) updates.username = username;
+    if (bio) updates.bio = bio;
+    if (phoneNumber) updates.phoneNumber = phoneNumber;
+
+    if (profilePictureFile) {
+      // Handle single vs array
+      profilePictureFile = Array.isArray(profilePictureFile)
+        ? profilePictureFile[0]
+        : profilePictureFile;
+
+      // Validate MIME type
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "image/webp",
+      ];
+      if (!allowedTypes.includes(profilePictureFile.mimetype)) {
+        return res.status(400).json({ message: "Invalid image file type" });
+      }
+
+      // Upload to Cloudinary
+      await uploadToCloudinary(
+        profilePictureFile,
+        "profilePic",
+        userId.toString(),
+      );
+
+      // Save original file name
+      updates.profilePicture = profilePictureFile.name;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
+
+    if (!updatedUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Profile update failed",
       error: error.message,
     });
   }

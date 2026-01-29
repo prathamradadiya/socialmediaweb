@@ -35,49 +35,6 @@ module.exports = (server) => {
       socket.emit("chatHistory", messages);
     });
 
-    // // Send message
-    // socket.on(
-    //   "sendMessage",
-    //   async ({ roomId, text, attachments, contentId }) => {
-    //     try {
-    //       if (!roomId || (!text && !attachments?.length && !contentId)) return;
-
-    //       let messageType = "text";
-    //       if (attachments?.length) messageType = "media";
-    //       else if (contentId) messageType = "post";
-
-    //       // Create chat
-    //       const chatData = await Chat.create({
-    //         roomId,
-    //         senderId: socket.userId,
-    //         text: text || null,
-    //         messageType,
-    //         attachments: attachments || [],
-    //         contentId: contentId || null,
-    //       });
-
-    //       // Populate attachments and contentId for receiver
-    //       const populatedChat = await Chat.findById(chatData._id)
-    //         .populate({
-    //           path: "attachments",
-    //           select: "_id userId url type size",
-    //         })
-    //         .populate({
-    //           path: "contentId",
-    //           select: "_id userId type images reel music  createdAt updatedAt",
-    //         });
-
-    //       // Receive Message
-    //       io.to(roomId).emit("receiveMessage", populatedChat);
-
-    //       socket.emit("messageSent", populatedChat);
-    //     } catch (err) {
-    //       console.error("sendMessage error:", err.message);
-    //       socket.emit("error", err.message);
-    //     }
-    //   },
-    // );
-
     socket.on("sendMessage", async (payload) => {
       try {
         const { roomId, text, attachments, contentId } = payload;

@@ -45,4 +45,12 @@ const loginSchema = Joi.object({
   password: Joi.string().required(),
 });
 
-module.exports = { signupSchema, loginSchema };
+const updateProfileSchema = Joi.object({
+  username: Joi.string().min(3).max(30).optional(),
+  bio: Joi.string().max(150).optional(),
+  phoneNumber: Joi.string()
+    .pattern(/^\+91\d{10}$/)
+    .optional(),
+});
+
+module.exports = { signupSchema, loginSchema, updateProfileSchema };
