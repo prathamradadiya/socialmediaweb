@@ -2,7 +2,6 @@ const likePost = require("../models/likedpost.model");
 const sharePost = require("../models/sharedpost.model");
 const commentPost = require("../models/comment.model");
 const Post = require("../models/post.model");
-const mongoose = require("mongoose");
 //likes
 
 exports.likePost = async (req, res) => {
@@ -180,72 +179,38 @@ exports.getPostByTag = async (req, res) => {
   }
 };
 
-//Delete Post
+// DELETE Post
+exports.deletePost = async (req, res) => {
+  try {
+    const { postId } = req.body;
+    const userId = req.user._id;
 
-// // DELETE post controller
-// exports.deletePost = async (req, res) => {
-//   try {
-//     const { postId } = req.params;
-//     const userId = req.user._id;
+    console.log(postId);
+    console.log(userId);
 
-//     if (!mongoose.Types.ObjectId.isValid(postId)) {
-//       return res.status(400).json({ message: "Invalid post ID" });
-//     }
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
 
-//     const post = await Post.findById(postId);
-//     if (!post) {
-//       return res.status(404).json({ message: "Post not found" });
-//     }
+    // Others Post
+    if (!post.userId.equals(userId)) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized for this post! " });
+    }
 
-//     // Ownership check
-//     if (post.userId.toString() !== userId.toString()) {
-//       return res.status(403).json({ message: "You cannot delete this post" });
-//     }
+    await Post.findByIdAndDelete(postId);
+    await likePost.findByIdAndDelete(postId);
+    await commentPost.findByIdAndDelete(postId);
 
-//     // Delete images
-//     if (post.images && post.images.length > 0) {
-//       post.images.forEach((img) => {
-//         const filePath = path.join(
-//           __dirname,
-//           "..",
-//           "public",
-//           "Images",
-//           "posts",
-//           path.basename(img),
-//         );
-//         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-//       });
-//     }
-
-//     // Delete reel
-//     if (post.reel) {
-//       const reelPath = path.join(
-//         __dirname,
-//         "..",
-//         "public",
-//         "Images",
-//         "posts",
-//         path.basename(post.reel),
-//       );
-//       if (fs.existsSync(reelPath)) fs.unlinkSync(reelPath);
-//     }
-
-//     // Remove post from DB
-//     await post.remove();
-
-//     // --- SOCKET.IO NOTIFICATION (Instagram-style real-time update) ---
-//     // If you are using io instance globally
-//     if (global.io) {
-//       global.io.to(userId.toString()).emit("postDeleted", { postId });
-//       // You can also emit to followers if you track them
-//       // e.g., followers.forEach(f => io.to(f._id.toString()).emit("postDeleted", { postId }));
-//     }
-
-//     return res
-//       .status(200)
-//       .json({ success: true, message: "Post deleted successfully" });
-//   } catch (err) {
-//     console.error("deletePost error:", err);
-//     return res.status(500).json({ success: false, message: "Server error" });
-//   }
-// };
+    return res.status(200).json({
+      message: "Post deleted successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};

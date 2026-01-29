@@ -7,27 +7,28 @@ const FollowUser = require("../models/follow_user.model");
 const Post = require("../models/post.model");
 const BlockedId = require("../models/blocked_acc.model");
 const OTP = require("../models/otp.model");
-const crypto = require("crypto");
-const jwt = require("jsonwebtoken");
 
 const sendEmail = require("../controllers/helper/email");
+const uploadToCloudinary = require("../utils/uploader");
 /* ===================== SIGNUP ===================== */
 exports.signup = async (req, res) => {
   try {
-    const { username, email, password, role, phoneNumber, bio } = req.body;
+    const { username, email, password, phoneNumber, bio } = req.body;
+    const profilePicture = req.files.profilePictureImage;
 
-    // Basic validation
+    console.log(req.body);
+    console.log(profilePicture);
+
+    // Validation
     if (!username || !email || !password || !phoneNumber) {
       return res.status(StatusCodes.BAD_REQUEST).json({
         message: "Required fields are missing",
       });
     }
-
-    // Check if username OR email already exists
+    // Check if user exists
     const existingUser = await User.findOne({
       $or: [{ username }, { email }],
     });
-
     if (existingUser) {
       return res.status(StatusCodes.CONFLICT).json({
         message: "Username or email already exists",
@@ -37,34 +38,45 @@ exports.signup = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Profile picture (multer)
-    const profilePicture = req.file ? req.file.filename : "";
+    let profilePictureName = "";
+
+    if (profilePicture) {
+      await uploadToCloudinary(profilePicture, "profilePic");
+      profilePictureName = profilePicture.name;
+    }
+
+    console.log(profilePicture);
 
     // Create user
     const newUser = await User.create({
       username,
       email,
       password: hashedPassword,
-      role: role || "user",
+      role: "user",
       phoneNumber,
       bio: bio || "",
-      profilePicture,
+      profilePicture: profilePicture.name,
       following_count: 0,
       follower_count: 0,
     });
 
     return res.status(StatusCodes.CREATED).json({
       message: "User registered successfully",
-      userId: newUser._id,
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        profilePicture: newUser.profilePicture,
+      },
     });
   } catch (error) {
+    console.error("Signup error:", error);
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
       message: "Server error",
       error: error.message,
     });
   }
 };
-
 //LOGIN
 exports.loginWithPassword = async (req, res) => {
   try {

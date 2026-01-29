@@ -13,6 +13,6 @@ router.post("/likePost", authMiddleware, likePost);
 router.post("/sharePost", authMiddleware, sharePost);
 router.post("/commentPost", authMiddleware, commentPost);
 router.get("/getPostByTag/:tag", authMiddleware, getPostByTag);
-router.delete("/deletePost/:postId", authMiddleware, deletePost);
+router.delete("/deletePost", authMiddleware, deletePost);
 
 module.exports = router;

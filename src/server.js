@@ -2,6 +2,8 @@ const express = require("express");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db.js");
 const path = require("path");
+const { cloudinaryConnect } = require("./config/cloudinary");
+const fileUpload = require("express-fileupload");
 const http = require("http");
 dotenv.config();
 const PORT = process.env.PORT || 3001;
@@ -12,6 +14,13 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
+
+app.use(
+  fileUpload({
+    useTempFiles: true,
+    tempFileDir: "/tmp",
+  }),
+);
 
 // ROUTES
 app.use("/api/auth", require("./routes/auth.Routes.js"));
@@ -30,6 +39,8 @@ const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
 const server = http.createServer(app);
+
+cloudinaryConnect();
 
 // INITIALIZE SOCKET
 require("./utils/socket.js")(server);

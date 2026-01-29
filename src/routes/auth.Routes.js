@@ -18,12 +18,14 @@ const { validate } = require("../middlewares/validation.middleware");
 const checkProfileBlocked = require("../middlewares/checkBlocked.Middleware");
 
 //SIGN UP ROUTES
-router.post(
-  "/signup",
-  uploadProfile.single("profilePicture"),
-  validate(signupSchema),
-  signup,
-);
+// SIGNUP
+// router.post(
+//   "/signup",
+//   uploadProfile.single("profilePicture"), // ✅ must be before validation/controller
+//   validate(signupSchema),
+//   signup,
+// );
+router.post("/signup", validate(signupSchema), signup);
 
 //LOGIN ROUTES
 router.post("/login", validate(loginSchema), loginWithPassword);
