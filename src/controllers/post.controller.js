@@ -2,54 +2,69 @@ const likePost = require("../models/likedpost.model");
 const sharePost = require("../models/sharedpost.model");
 const commentPost = require("../models/comment.model");
 const Post = require("../models/post.model");
-//likes
+const Tag = require("../models/tags.model");
+const {
+  getPaginationMetadata,
+  getPaginatedResponse,
+} = require("../controllers/helper/pagination");
 
+//==================likes==========================
 exports.likePost = async (req, res) => {
   try {
     const { postId } = req.body;
     const userId = req.user._id;
-    console.log(req.body);
 
     if (!postId) {
-      return res.status(400).json({ message: "PostID required" });
+      return res.status(400).json({ message: "PostId required" });
     }
 
-    //find this post from db
-    const post = await Post.findById(postId);
+    // Check post exists & not deleted
+    const post = await Post.findOne({ _id: postId, isDeleted: false });
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    //for already liked post
-    const alreadyLiked = await likePost.findOne({ userId, postId });
+    // Check like status
+    const existingLike = await likePost.findOne({ userId, postId });
 
-    if (alreadyLiked) {
-      await likePost.deleteOne({ userId, postId });
+    // 1: Already liked
+    if (existingLike && !existingLike.isDeleted) {
+      await likePost.updateOne({ userId, postId }, { isDeleted: true });
 
-      await Post.findByIdAndUpdate(postId, {
-        $inc: { likesCount: -1 },
-        // $max: { likesCount: 0 },
-      });
+      await Post.updateOne(
+        { _id: postId, likesCount: { $gt: 0 } },
+        { $inc: { likesCount: -1 } },
+      );
 
-      return res.status(200).json({ success: true, message: "Post unliked" });
+      return res.status(200).json({ message: "Post unLiked" });
     }
 
-    //user likes post
-    await likePost.create({ userId, postId });
+    // 2: Liked before, now re-like
+    if (existingLike && existingLike.isDeleted) {
+      await likePost.updateOne({ userId, postId }, { isDeleted: false });
 
-    await Post.findByIdAndUpdate(postId, {
-      $inc: { likesCount: 1 },
+      await Post.updateOne({ _id: postId }, { $inc: { likesCount: 1 } });
+
+      return res.status(200).json({ message: "Post liked" });
+    }
+
+    // Case 3: First time like
+    await likePost.create({
+      userId,
+      postId,
+      isDeleted: false,
     });
 
-    return res.status(200).json({ success: true, message: "Post liked" });
+    await Post.updateOne({ _id: postId }, { $inc: { likesCount: 1 } });
+
+    return res.status(200).json({ message: "Post liked" });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 };
 
-//share
-
+//===============share=========================
 exports.sharePost = async (req, res) => {
   try {
     const { postId, sharedUserId } = req.body;
@@ -88,7 +103,6 @@ exports.sharePost = async (req, res) => {
 };
 
 //Comments
-
 exports.commentPost = async (req, res) => {
   try {
     const { postId, comment } = req.body;
@@ -100,8 +114,8 @@ exports.commentPost = async (req, res) => {
         .status(400)
         .json({ message: "PostID and comment not found!!!" });
     }
-    //find this post from db
-    const post = await Post.findById(postId);
+
+    const post = await Post.findOne({ _id: postId, isDeleted: false });
 
     if (!post) {
       return res.status(404).json({ message: "Post not available" });
@@ -110,7 +124,8 @@ exports.commentPost = async (req, res) => {
     await commentPost.create({
       userId,
       postId,
-      comment,
+      comment: comment.trim(),
+      isDeleted: false,
     });
 
     await Post.findByIdAndUpdate(postId, {
@@ -125,11 +140,57 @@ exports.commentPost = async (req, res) => {
   }
 };
 
-const Tag = require("../models/tags.model");
-const {
-  getPaginationMetadata,
-  getPaginatedResponse,
-} = require("../controllers/helper/pagination");
+//========================GetAll Comments of Post================================
+
+exports.getComments = async (req, res) => {
+  try {
+    const { postId } = req.params;
+
+    const { page, limit, offset } = getPaginationMetadata(
+      req.query.page,
+      req.query.limit,
+    );
+
+    // Fetch comments and populate username
+    const comments = await commentPost
+      .find({ postId, isDeleted: false })
+      .skip(offset)
+      .limit(limit)
+      .populate({
+        path: "userId",
+        select: "username",
+      });
+
+    console.log(comments);
+
+    // Total count for pagination
+    const total = await commentPost.countDocuments({
+      postId,
+      isDeleted: false,
+    });
+
+    // Map only username and comment
+    const result = comments.map((c) => ({
+      username: c.userId.username,
+      comment: c.comment,
+    }));
+
+    return res.status(200).json(
+      getPaginatedResponse(
+        {
+          rows: result,
+          count: total,
+        },
+        page,
+        limit,
+      ),
+    );
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+//========================Search Post by Tag==============================================
 
 exports.getPostByTag = async (req, res) => {
   try {
@@ -185,24 +246,34 @@ exports.deletePost = async (req, res) => {
     const { postId } = req.body;
     const userId = req.user._id;
 
-    console.log(postId);
-    console.log(userId);
+    //Find post
+    const post = await Post.findOne({
+      _id: postId,
+      isDeleted: false,
+    });
 
-    const post = await Post.findById(postId);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    // Others Post
+    //Ownership check
     if (!post.userId.equals(userId)) {
-      return res
-        .status(403)
-        .json({ message: "Not authorized for this post! " });
+      return res.status(403).json({
+        message: "Not authorized for this post",
+      });
     }
 
-    await Post.findByIdAndDelete(postId);
-    await likePost.findByIdAndDelete(postId);
-    await commentPost.findByIdAndDelete(postId);
+    //Soft delete post
+    await Post.findByIdAndUpdate(postId, {
+      isDeleted: true,
+      deletedAt: Date.now(),
+    });
+
+    //Soft delete related comments
+    await commentPost.updateMany({ postId }, { isDeleted: true });
+
+    //Soft delete related likes
+    await likePost.updateMany({ postId }, { isDeleted: true });
 
     return res.status(200).json({
       message: "Post deleted successfully",

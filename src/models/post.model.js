@@ -30,10 +30,21 @@ const postSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );
 
 const Post = mongoose.model("posts", postSchema);
+
+postSchema.index({ createdAt: -1 });
+postSchema.index({ userId: 1, createdAt: -1 });
 
 module.exports = Post;

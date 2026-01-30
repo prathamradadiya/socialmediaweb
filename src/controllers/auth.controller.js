@@ -2,15 +2,19 @@ const bcrypt = require("bcrypt");
 const User = require("../models/users.model");
 const { createJWT } = require("./helper/json_web_token");
 const { StatusCodes } = require("http-status-codes");
-
 const FollowUser = require("../models/follow_user.model");
 const Post = require("../models/post.model");
 const BlockedId = require("../models/blocked_acc.model");
-const OTP = require("../models/otp.model");
+//const OTP = require("../models/otp.model");
 const client = require("../config/sendgrid");
 //const sendEmail = require("../controllers/helper/email");
 const uploadToCloudinary = require("../utils/uploader");
+const {
+  getPaginatedResponse,
+  getPaginationMetadata,
+} = require("../controllers/helper/pagination");
 /* ================================= SIGNUP ===================== */
+
 exports.signup = async (req, res) => {
   try {
     const { username, email, password, phoneNumber, bio } = req.body;
@@ -45,7 +49,7 @@ exports.signup = async (req, res) => {
       profilePictureName = profilePicture.name;
     }
 
-    console.log(profilePicture);
+    // console.log(profilePicture);
 
     // Create user
     const newUser = await User.create({
@@ -207,11 +211,17 @@ exports.verifyLoginOtp = async (req, res) => {
   }
 };
 
-//===============================SEARCH USER PROFILE=======================================
+//===============================Get USER PROFILE=======================================
+
 exports.getUserProfile = async (req, res) => {
   try {
     const profileUserId = req.params.userId;
     const viewerId = req.user._id;
+
+    const { page, limit, offset } = getPaginationMetadata(
+      req.query.page,
+      req.query.limit,
+    );
 
     const user = await User.findById(profileUserId).select(
       "username profilePicture bio follower_count following_count",
@@ -237,8 +247,8 @@ exports.getUserProfile = async (req, res) => {
           bio: user.bio,
           follower_count: 0,
           following_count: 0,
-          posts: [],
         },
+        posts: getPaginatedResponse({ rows: [], count: 0 }, page, limit),
       });
     }
 
@@ -247,41 +257,31 @@ exports.getUserProfile = async (req, res) => {
       followingId: profileUserId,
     });
 
-    const posts = await Post.find({ userId: profileUserId }).select(
-      "contentId musicId likesCount commentCount sharesCount",
+    // Paginated posts
+    const [posts, totalPosts] = await Promise.all([
+      Post.find({ userId: profileUserId })
+        .select("contentId musicId likesCount commentCount sharesCount")
+        .skip(offset)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
+
+      Post.countDocuments({ userId: profileUserId }),
+    ]);
+
+    const paginatedPosts = getPaginatedResponse(
+      { rows: posts, count: totalPosts },
+      page,
+      limit,
     );
 
     res.status(200).json({
       blocked: false,
       isFollowing: !!isFollowing,
       user,
-      posts,
+      posts: paginatedPosts,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
-  }
-};
-
-//======================================LOGOUT=======================================
-exports.logout = async (req, res) => {
-  try {
-    // ✅ If token is in HTTP-only cookie
-    res.cookie("token", "", {
-      httpOnly: true,
-      expires: new Date(0), // Expire immediately
-    });
-
-    // ✅ Return success
-    return res.status(200).json({
-      success: true,
-      message: "Logged out successfully",
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Logout failed",
-      error: error.message,
-    });
   }
 };
 
@@ -295,15 +295,16 @@ exports.updateProfile = async (req, res) => {
     console.log(profilePictureFile);
 
     const updates = {};
+    //user want to update fields into updates
     if (username) updates.username = username;
     if (bio) updates.bio = bio;
     if (phoneNumber) updates.phoneNumber = phoneNumber;
 
     if (profilePictureFile) {
-      // Handle single vs array
-      profilePictureFile = Array.isArray(profilePictureFile)
-        ? profilePictureFile[0]
-        : profilePictureFile;
+      // // Handle single vs array
+      // profilePictureFile = Array.isArray(profilePictureFile)
+      //   ? profilePictureFile[0]
+      //   : profilePictureFile;
 
       // Validate MIME type
       const allowedTypes = [
@@ -347,7 +348,30 @@ exports.updateProfile = async (req, res) => {
     console.error("Profile update error:", error);
     return res.status(500).json({
       success: false,
-      message: "Profile update failed",
+      message: "Profile Update Failed",
+      error: error.message,
+    });
+  }
+};
+
+//======================================LOGOUT=======================================
+exports.logout = async (req, res) => {
+  try {
+    // If token is in HTTP-only cookie
+    res.cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0), // Expire immediately
+    });
+
+    //  Return success
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Logout failed",
       error: error.message,
     });
   }

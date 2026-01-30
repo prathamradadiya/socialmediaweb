@@ -16,9 +16,14 @@ const commentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );
 const Comment = mongoose.model("comments", commentSchema);
+commentSchema.index({ postId: 1, createdAt: -1 });
 
 module.exports = Comment;

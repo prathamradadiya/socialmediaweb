@@ -22,6 +22,7 @@ module.exports = (server) => {
 
       const messages = await Chat.find({ roomId })
         .sort({ createdAt: -1 })
+        .limit(30)
         .populate({
           path: "attachments",
           select: "_id userId url type size",

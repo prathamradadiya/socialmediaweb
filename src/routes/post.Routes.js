@@ -6,6 +6,7 @@ const {
   sharePost,
   commentPost,
   deletePost,
+  getComments,
 } = require("../controllers/post.controller");
 const { getPostByTag } = require("../controllers/post.controller");
 
@@ -14,5 +15,6 @@ router.post("/sharePost", authMiddleware, sharePost);
 router.post("/commentPost", authMiddleware, commentPost);
 router.get("/getPostByTag/:tag", authMiddleware, getPostByTag);
 router.delete("/deletePost", authMiddleware, deletePost);
+router.get("/getComments/:postId", authMiddleware, getComments);
 
 module.exports = router;
