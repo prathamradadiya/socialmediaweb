@@ -1,5 +1,5 @@
 // src/middleware/validation.middleware.js
-const { StatusCodes } = require("http-status-codes");
+const response = require("../helper");
 
 /**
  * Middleware factory for request validation
@@ -26,11 +26,11 @@ const validate = (schema, location = "body") => {
         message: detail.message,
       }));
 
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        status: "error",
-        message: "Validation error",
-        errors,
-      });
+      return response.error(
+        res,
+        9000, // Please enter valid data!
+        400,
+      );
     }
 
     req[location] = value;

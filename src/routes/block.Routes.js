@@ -6,8 +6,9 @@ const {
   getBlockedUsers,
 } = require("../controllers/block.controller");
 
+//====================Block-user=======================
 router.post("/blockUser", authMiddleware, blockUser);
-
+//====================UnBlock-user=======================
 router.post("/unblock", authMiddleware, unblockUser);
 
 router.get("/getBlockedUsers", authMiddleware, getBlockedUsers);

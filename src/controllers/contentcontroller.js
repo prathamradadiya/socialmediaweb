@@ -1,39 +1,45 @@
-const Content = require("../models/content.model");
-const Post = require("../models/post.model");
-const Music = require("../models/music.model");
-const Tag = require("../models/tags.model");
-const Upload = require("../models/uploads.model");
+const { Post, Music, Tag, Upload, Content } = require("../models");
 const uploadToCloudinary = require("../utils/uploader");
-
+const response = require("../helper/response/response");
 /* ============================ CREATE POST ============================ */
 exports.createPostWithContent = async (req, res) => {
   try {
     let { musicTitle, title, tags } = req.body;
 
     if (!req.user?._id) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return response.error(res, 1010, 401);
     }
 
     /* ============================ MUSIC ============================ */
     let musicRef = null;
     if (musicTitle) {
       const music = await Music.findOne({
-        title: { $regex: `^${musicTitle}$`, $options: "i" },
+        title: musicTitle.toLowerCase(),
       });
 
       if (!music) {
-        return res.status(404).json({ message: "Music not found" });
+        return response.error(res, 9001, 404);
       }
       musicRef = music._id;
     }
 
     /* ============================ TAGS ============================ */
-    if (typeof tags === "string") tags = tags.split(",");
-    if (!Array.isArray(tags)) tags = [];
+    if (typeof tags === "string") {
+      tags = tags.split(",");
+    }
+    if (!Array.isArray(tags)) {
+      tags = [];
+    }
 
-    tags = tags
-      .map((t) => t.trim().toLowerCase())
-      .filter((t) => t.startsWith("#"));
+    const invalidTags = tags.filter(
+      (t) => typeof t !== "string" || !/^#[a-zA-Z0-9_]{1,30}$/.test(t.trim()),
+    );
+
+    if (invalidTags.length > 0) {
+      return response.error(res, 9000, 400);
+    }
+
+    tags = [...new Set(tags.map((t) => t.trim().toLowerCase()))];
 
     /* ============================ FILES ============================ */
     let imagesFiles = req.files?.images || [];
@@ -43,15 +49,11 @@ exports.createPostWithContent = async (req, res) => {
     reelFiles = Array.isArray(reelFiles) ? reelFiles : [reelFiles];
 
     if (!imagesFiles.length && !reelFiles.length) {
-      return res.status(400).json({ message: "Image or Reel required" });
+      return response.error(res, 9000, 400);
     }
 
-    if (imagesFiles.length > 10) {
-      return res.status(400).json({ message: "Max 10 images allowed" });
-    }
-
-    if (reelFiles.length > 1) {
-      return res.status(400).json({ message: "Only 1 reel allowed" });
+    if (imagesFiles.length > 10 || reelFiles.length > 1) {
+      return response.error(res, 9000, 400);
     }
 
     /* ============================ FILE TYPE VALIDATION ============================ */
@@ -65,21 +67,17 @@ exports.createPostWithContent = async (req, res) => {
 
     for (const file of imagesFiles) {
       if (!allowedImageTypes.includes(file.mimetype)) {
-        return res.status(400).json({
-          message: "Only image files allowed in images",
-        });
+        return response.error(res, 9000, 400);
       }
     }
 
     for (const file of reelFiles) {
       if (!allowedVideoTypes.includes(file.mimetype)) {
-        return res.status(400).json({
-          message: "Only video files allowed in reel",
-        });
+        return response.error(res, 9000, 400);
       }
     }
 
-    /* ============================ UPLOAD TO CLOUDINARY ============================ */
+    /* ============================ UPLOAD ============================ */
     const uploadedImages = [];
 
     for (const file of imagesFiles) {
@@ -90,7 +88,6 @@ exports.createPostWithContent = async (req, res) => {
     let reelFileName = null;
     if (reelFiles.length) {
       await uploadToCloudinary(reelFiles[0], "reels", req.user._id.toString());
-
       reelFileName = reelFiles[0].name;
     }
 
@@ -103,14 +100,12 @@ exports.createPostWithContent = async (req, res) => {
       music: musicRef,
     });
 
-    /* ============================ SAVE POST ============================ */
     const post = await Post.create({
       userId: req.user._id,
       contentId: content._id,
       musicId: musicRef,
     });
 
-    /* ============================ SAVE TAGS ============================ */
     if (tags.length) {
       await Tag.insertMany(
         tags.map((tag) => ({
@@ -121,19 +116,10 @@ exports.createPostWithContent = async (req, res) => {
       );
     }
 
-    return res.status(201).json({
-      success: true,
-      message: "Post created successfully",
-      post,
-      content,
-      tags,
-    });
+    return response.success(res, 2001, { post, content, tags }, 201);
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    console.error(error);
+    return response.error(res, 9999, 500);
   }
 };
 
@@ -141,7 +127,7 @@ exports.createPostWithContent = async (req, res) => {
 exports.uploadMedia = async (req, res) => {
   try {
     if (!req.files || !req.files.media) {
-      return res.status(400).json({ message: "No media uploaded" });
+      return response.error(res, 9000, 400);
     }
 
     let mediaFiles = req.files.media;
@@ -156,33 +142,21 @@ exports.uploadMedia = async (req, res) => {
       const isVideo = file.mimetype.startsWith("video/");
 
       if (!isImage && !isVideo) {
-        return res.status(400).json({
-          message: "Only images and videos allowed",
-        });
+        return response.error(res, 9000, 400);
       }
 
       if (isImage) imageCount++;
       if (isVideo) videoCount++;
 
-      if (imageCount > 10) {
-        return res.status(400).json({ message: "Max 10 images allowed" });
+      if (imageCount > 10 || videoCount > 3) {
+        return response.error(res, 9000, 400);
       }
 
-      if (videoCount > 3) {
-        return res.status(400).json({ message: "Max 3 videos allowed" });
-      }
-
-      const uploaded = await uploadToCloudinary(
-        file,
-        "chatMedia",
-        req.user._id.toString(),
-      );
-
-      let url = file.name;
+      await uploadToCloudinary(file, "chatMedia", req.user._id.toString());
 
       const doc = await Upload.create({
         userId: req.user._id,
-        url,
+        url: file.name,
         type: isImage ? "image" : "video",
         mimeType: file.mimetype,
         size: file.size,
@@ -191,14 +165,9 @@ exports.uploadMedia = async (req, res) => {
       uploadedDocs.push(doc);
     }
 
-    return res.status(200).json({
-      success: true,
-      uploads: uploadedDocs,
-    });
+    return response.success(res, 1028, uploadedDocs, 200);
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err.message,
-    });
+    console.error(err);
+    return response.error(res, 9999, 500);
   }
 };

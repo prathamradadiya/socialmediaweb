@@ -1,12 +1,10 @@
-// controllers/follow.controller.js
+const { FollowUser, User, FollowRequest } = require("../models");
+const response = require("../helper/response/response");
 
-const FollowUser = require("../models/follow_user.model");
-const User = require("../models/users.model");
-const FollowRequest = require("../models/followRequest.model");
 const {
   getPaginationMetadata,
   getPaginatedResponse,
-} = require("../controllers/helper/pagination");
+} = require("../helper/pagination");
 
 /* ===================== SEND FOLLOW REQUEST ===================== */
 exports.followRequests = async (req, res) => {
@@ -15,24 +13,22 @@ exports.followRequests = async (req, res) => {
     const senderId = req.user._id;
 
     if (!receiverId) {
-      return res.status(400).json({ message: "receiverId is required" });
+      return response.error(res, 9000, 400);
     }
 
     if (senderId.toString() === receiverId) {
-      return res.status(400).json({ message: "You cannot follow yourself" });
+      return response.error(res, 5003, 400);
     }
 
-    // already following
     const alreadyFollowing = await FollowUser.findOne({
       followerId: senderId,
       followingId: receiverId,
     });
 
     if (alreadyFollowing) {
-      return res.status(400).json({ message: "You already follow this user" });
+      return response.error(res, 9003, 400);
     }
 
-    //CHECK: request already exists
     const existingRequest = await FollowRequest.findOne({
       sender: senderId,
       receiver: receiverId,
@@ -40,7 +36,7 @@ exports.followRequests = async (req, res) => {
     });
 
     if (existingRequest) {
-      return res.status(400).json({ message: "Request already sent" });
+      return response.error(res, 9003, 400);
     }
 
     const request = await FollowRequest.create({
@@ -48,12 +44,9 @@ exports.followRequests = async (req, res) => {
       receiver: receiverId,
     });
 
-    return res.status(201).json({
-      message: "Follow request sent",
-      request,
-    });
+    return response.success(res, 5004, request, 201);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return response.error(res, 9999, 500);
   }
 };
 
@@ -67,12 +60,12 @@ exports.getPendingRequests = async (req, res) => {
       status: "requested",
     }).populate("sender", "username profilePicture");
 
-    return res.status(200).json({
+    return response.success(res, 1029, {
       count: requests.length,
       data: requests,
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return response.error(res, 9999, 500);
   }
 };
 
@@ -81,20 +74,23 @@ exports.respondToRequest = async (req, res) => {
   try {
     const { requestId, action } = req.body;
 
+    if (!requestId || !action) {
+      return response.error(res, 9000, 400);
+    }
+
     const request = await FollowRequest.findById(requestId);
     if (!request) {
-      return res.status(404).json({ message: "Request not found" });
+      return response.error(res, 5007, 404);
     }
 
     if (request.status !== "requested") {
-      return res.status(400).json({ message: "Request already processed" });
+      return response.error(res, 5008, 400);
     }
 
     if (action === "accept") {
       request.status = "accepted";
       await request.save();
 
-      // sender follows receiver
       await FollowUser.create({
         followerId: request.sender,
         followingId: request.receiver,
@@ -108,22 +104,23 @@ exports.respondToRequest = async (req, res) => {
         $inc: { following_count: 1 },
       });
 
-      return res.status(200).json({ message: "Request accepted" });
+      return response.success(res, 5005);
     }
 
     if (action === "reject") {
       request.status = "rejected";
       await request.save();
-      return res.status(200).json({ message: "Request rejected" });
+      return response.success(res, 5006);
     }
 
-    return res.status(400).json({ message: "Invalid action" });
+    return response.error(res, 9000, 400);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return response.error(res, 9999, 500);
   }
 };
 
-/* ===================== GET FOLLOWERS (MONGODB) ===================== */
+/* ===================== GET FOLLOWERS ===================== */
+
 exports.getFollowers = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -133,48 +130,7 @@ exports.getFollowers = async (req, res) => {
     );
 
     if (!userId) {
-      return res.status(400).json({ message: "userId is required" });
-    }
-
-    const userExists = await User.exists({ _id: userId });
-    if (!userExists) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const followers = await FollowUser.find({ followingId: userId })
-      .skip(offset)
-      .limit(limit)
-      .populate("followerId", "username profilePicture");
-
-    const total = await FollowUser.countDocuments({
-      followingId: userId,
-    });
-
-    return res
-      .status(200)
-      .json(
-        getPaginatedResponse(
-          { rows: followers.map((f) => f.followerId), count: total },
-          page,
-          limit,
-        ),
-      );
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-};
-
-/* ===================== GET FOLLOWING (MONGODB) ===================== */
-exports.getFollowing = async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const { page, limit, offset } = getPaginationMetadata(
-      req.query.page,
-      req.query.limit,
-    );
-
-    if (!userId) {
-      return res.status(400).json({ message: "userId is required" });
+      return response.error(res, 9000, 400);
     }
 
     const following = await FollowUser.find({ followerId: userId })
@@ -186,16 +142,58 @@ exports.getFollowing = async (req, res) => {
       followerId: userId,
     });
 
-    return res
-      .status(200)
-      .json(
-        getPaginatedResponse(
-          { rows: following.map((f) => f.followingId), count: total },
-          page,
-          limit,
-        ),
-      );
+    return response.success(
+      res,
+      1003,
+      getPaginatedResponse(
+        { rows: following.map((f) => f.followingId), count: total },
+        page,
+        limit,
+      ),
+    );
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return response.error(res, 9999, 500);
+  }
+};
+
+/* ===================== GET FOLLOWING ===================== */
+
+exports.getFollowing = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const { page, limit, offset } = getPaginationMetadata(
+      req.query.page,
+      req.query.limit,
+    );
+
+    if (!userId) {
+      return response.error(res, 9000, 400);
+    }
+
+    const userExists = await User.exists({ _id: userId });
+    if (!userExists) {
+      return response.error(res, 1007, 404);
+    }
+
+    const followers = await FollowUser.find({ followingId: userId })
+      .skip(offset)
+      .limit(limit)
+      .populate("followerId", "username profilePicture");
+
+    const total = await FollowUser.countDocuments({
+      followingId: userId,
+    });
+
+    return response.success(
+      res,
+      1003,
+      getPaginatedResponse(
+        { rows: followers.map((f) => f.followerId), count: total },
+        page,
+        limit,
+      ),
+    );
+  } catch (err) {
+    return response.error(res, 9999, 500);
   }
 };

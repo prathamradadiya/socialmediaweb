@@ -1,23 +1,52 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/users.model");
+const { User, BlacklistedToken } = require("../models");
+const response = require("../helper/response/response");
 
+// const authMiddleware = async (req, res, next) => {
+//   try {
+//     const authHeader = req.headers.authorization;
+
+//     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+//       return response.error(res, 1010, 401); // Unauthorized Users
+//     }
+
+//     const token = authHeader.split(" ")[1];
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+//     const user = await User.findById(decoded.userId).select("-password");
+//     if (!user) {
+//       return response.error(res, 1010, 401); // Unauthorized Users
+//     }
+
+//     req.user = user;
+//     next();
+//   } catch (error) {
+//     return response.error(res, 1010, 401); // Invalid / Expired token
+//   }
+// };
+
+// module.exports = { authMiddleware };
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer "))
-      return res.status(401).json({ message: "Unauthorized" });
 
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return response.error(res, 1010, 401);
+    }
 
-    const user = await User.findById(decoded.userId).select("-password");
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const accessToken = authHeader.split(" ")[1];
 
-    req.user = user;
+    const blacklisted = await BlacklistedToken.findOne({ token: accessToken });
+    if (blacklisted) return response.error(res, 1010, 401);
+
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+
+    req.user = await User.findById(decoded.userId).select("-password");
+    if (!req.user) return response.error(res, 1010, 401);
+
     next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid token" });
+  } catch (err) {
+    return response.error(res, 1010, 401);
   }
 };
-
 module.exports = { authMiddleware };

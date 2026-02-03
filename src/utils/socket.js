@@ -11,6 +11,7 @@ module.exports = (server) => {
 
   io.on("connection", (socket) => {
     console.log("User connected:", socket.userId);
+    console.log("Socket connected", socket.id);
 
     // Join chat room
     socket.on("joinChat", async ({ roomId }) => {

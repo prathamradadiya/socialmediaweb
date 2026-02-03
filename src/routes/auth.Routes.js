@@ -9,16 +9,12 @@ const {
 } = require("../controllers/auth.controller");
 const { authMiddleware } = require("../middlewares/auth.middleware");
 // const uploadProfile = require("../middlewares/uploadProfileMiddleware");
-const {
-  loginSchema,
-  signupSchema,
-  updateProfileSchema,
-} = require("../validation/schemas/users.schema");
+const { loginSchema, signupSchema, updateProfileSchema } = require("../helper");
 const { validate } = require("../middlewares/validation.middleware");
 
 const checkProfileBlocked = require("../middlewares/checkBlocked.Middleware");
 
-//SIGN UP ROUTES
+//====================SIGN UP ROUTES================
 // SIGNUP
 // router.post(
 //   "/signup",
@@ -31,7 +27,10 @@ router.post("/signup", validate(signupSchema), signup);
 //LOGIN ROUTES
 router.post("/login", validate(loginSchema), loginWithPassword);
 
-// Get profiles
+// Logout route
+router.post("/logout", authMiddleware, logout);
+
+//=========================Get Profiles=========================
 router.get(
   "/profile/:userId",
   authMiddleware,
@@ -39,7 +38,7 @@ router.get(
   getUserProfile,
 );
 
-//Update User
+//========================Update--User========================
 router.put(
   "/updateProfile",
   authMiddleware,
@@ -47,10 +46,7 @@ router.put(
   updateProfile,
 );
 
-//LOGOUT
-router.post("/logout", authMiddleware, logout);
-
-//VERIFY OTP ROUTES
+//========================VERIFY OTP ROUTES====================
 router.post("/verify-otp", verifyLoginOtp);
 
 module.exports = router;

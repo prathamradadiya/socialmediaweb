@@ -1,41 +1,54 @@
-const Conversation = require("../models/conversation.model");
-const Chat = require("../models/chat.model");
-const Group = require("../models/group.model");
+const { Conversation, Chat, Group } = require("../models");
+const response = require("../helper/response/response");
 
-//.   CREATE CONVERSATION
+/* ===================== CREATE CONVERSATION ===================== */
 exports.createConversation = async (req, res) => {
-  const { userId } = req.body;
+  try {
+    const { userId } = req.body;
 
-  const existing = await Conversation.findOne({
-    userId: { $all: [req.user._id, userId] },
-  });
+    if (!userId) {
+      return response.error(res, 9000, 400);
+    }
 
-  if (existing) {
-    return res.status(200).json({
-      message: "Conversation already exists",
-      conversation: existing,
+    const existing = await Conversation.findOne({
+      userId: { $all: [req.user._id, userId] },
     });
+
+    if (existing) {
+      return response.success(res, 9003, existing, 200);
+    }
+
+    const conversation = await Conversation.create({
+      userId: [req.user._id, userId],
+    });
+
+    await Chat.create({
+      roomId: conversation._id,
+    });
+
+    return response.success(res, 6004, conversation, 201);
+  } catch (err) {
+    return response.error(res, 9999, 500);
   }
-  const conversation = await Conversation.create({
-    userId: [req.user._id, userId],
-  });
-
-  const roomId = await Chat.create({
-    roomId: conversation._id,
-  });
-
-  res.status(201).json(conversation);
 };
 
-//   CREATE GROUP
+/* ===================== CREATE GROUP ===================== */
 exports.createGroup = async (req, res) => {
-  const { name, members } = req.body;
+  try {
+    const { name, members } = req.body;
 
-  const group = await Group.create({
-    name,
-    admin: req.user._id,
-    members: [req.user._id, ...members],
-  });
+    if (!name || !Array.isArray(members)) {
+      return response.error(res, 9000, 400);
+    }
 
-  res.status(201).json(group);
+    const group = await Group.create({
+      name,
+      admin: req.user._id,
+      members: [req.user._id, ...members],
+    });
+
+    return response.success(res, 6005, group, 201);
+  } catch (err) {
+    return response.error(res, 9999, 500);
+  }
 };

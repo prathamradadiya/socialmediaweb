@@ -1,24 +1,23 @@
 const BlockedId = require("../models/blocked_acc.model");
+const response = require("../helper/response/response");
 
 const checkProfileBlocked = async (req, res, next) => {
   try {
-    const viewerId = req.user._id;
-    const profileUserId = req.params.userId;
+    const viewerId = req.user._id; // person viewing profile
+    const profileUserId = req.params.userId; // profile owner
 
     const isBlocked = await BlockedId.findOne({
-      blockerId: viewerId, // profile owner
-      blockedId: profileUserId, // viewer
+      blockerId: profileUserId,
+      blockedId: viewerId,
     });
 
-    // if (isBlocked) {
-    //   return res.status(200).json({
-    //     error: "You  blocked this user",
-    //   });
-    // }
+    if (isBlocked) {
+      return response.error(res, 9002, 403); // Action not allowed
+    }
 
     next();
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return response.error(res, 9999, 500); // Something went wrong
   }
 };
 

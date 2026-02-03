@@ -1,5 +1,5 @@
 // middlewares/socketAuth.js
-const { verifyJWT } = require("../controllers/helper/json_web_token");
+const { verifyJWT } = require("../helper/json_web_token");
 
 const socketAuth = async (socket, next) => {
   try {

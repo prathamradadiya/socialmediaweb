@@ -17,7 +17,7 @@ const chatSchema = new mongoose.Schema(
     attachments: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "uploads", // media collection
+        ref: "uploads",
       },
     ],
     messageType: {

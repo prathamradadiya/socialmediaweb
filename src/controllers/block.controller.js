@@ -1,10 +1,10 @@
-// controllers/blocked.controller.js
-const BlockedUser = require("../models/blocked_acc.model");
-const User = require("../models/users.model");
+const mongoose = require("mongoose");
+const { BlockedId } = require("../models");
+const response = require("../helper/response/response");
 const {
   getPaginationMetadata,
   getPaginatedResponse,
-} = require("../controllers/helper/pagination");
+} = require("../helper/pagination");
 
 /* ===================== BLOCK USER ===================== */
 exports.blockUser = async (req, res) => {
@@ -13,33 +13,35 @@ exports.blockUser = async (req, res) => {
     const currentUserId = req.user._id;
 
     if (!blockedId) {
-      return res.status(400).json({ error: "blockedId is required" });
+      return response.error(res, 9000, 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(blockedId)) {
+      return response.error(res, 9000, 400);
     }
 
     if (currentUserId.toString() === blockedId) {
-      return res.status(400).json({ error: "You cannot block yourself" });
+      return response.error(res, 9002, 400); // cannot block yourself
     }
 
-    const alreadyBlocked = await BlockedUser.findOne({
+    const alreadyBlocked = await BlockedId.findOne({
       blockerId: currentUserId,
       blockedId,
     });
 
     if (alreadyBlocked) {
-      return res.status(400).json({ error: "User already blocked" });
+      return response.error(res, 1024, 400); // Already exists
     }
 
-    await BlockedUser.create({
+    await BlockedId.create({
       blockerId: currentUserId,
       blockedId,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "User blocked successfully",
-    });
+    return response.success(res, 1023);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error(err);
+    return response.error(res, 9999, 500);
   }
 };
 
@@ -49,17 +51,27 @@ exports.unblockUser = async (req, res) => {
     const { blockedId } = req.body;
     const currentUserId = req.user._id;
 
-    await BlockedUser.deleteOne({
+    if (!blockedId) {
+      return response.error(res, 9000, 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(blockedId)) {
+      return response.error(res, 9000, 400);
+    }
+
+    const result = await BlockedId.deleteOne({
       blockerId: currentUserId,
       blockedId,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "User unblocked successfully",
-    });
+    if (result.deletedCount === 0) {
+      return response.error(res, 1026, 400);
+    }
+
+    return response.success(res, 1025);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error(err);
+    return response.error(res, 9999, 500);
   }
 };
 
@@ -67,24 +79,27 @@ exports.unblockUser = async (req, res) => {
 exports.getBlockedUsers = async (req, res) => {
   try {
     const userId = req.user._id;
+
     const { page, limit, offset } = getPaginationMetadata(
       req.query.page,
       req.query.limit,
     );
 
-    const blocked = await BlockedUser.find({ blockerId: userId })
+    const blocked = await BlockedId.find({ blockerId: userId })
       .skip(offset)
       .limit(limit)
       .populate("blockedId", "username profilePicture");
 
-    const total = await BlockedUser.countDocuments({
+    const total = await BlockedId.countDocuments({
       blockerId: userId,
     });
 
-    return res.status(200).json(
+    return response.success(
+      res,
+      1027,
       getPaginatedResponse(
         {
-          rows: blocked.map((b) => b.blockedId),
+          rows: blocked.map((b) => b.blockedId).filter(Boolean),
           count: total,
         },
         page,
@@ -92,6 +107,7 @@ exports.getBlockedUsers = async (req, res) => {
       ),
     );
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error(err);
+    return response.error(res, 9999, 500);
   }
 };
