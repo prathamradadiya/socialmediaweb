@@ -1,13 +1,26 @@
-const path = require("path");
-require("dotenv").config({
-  path: path.resolve(__dirname, "../../.env"),
-});
+const nodemailer = require("nodemailer");
 
-const twilio = require("twilio");
+const mailSender = async (email, title, body) => {
+  try {
+    let transporter = nodemailer.createTransport({
+      host: process.env.MAIL_HOST,
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
+    });
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN,
-);
+    let info = await transporter.sendMail({
+      from: "InstaGram",
+      to: `${email}`,
+      subject: `${title}`,
+      html: `${body}`,
+    });
+    console.log(info);
+    return info;
+  } catch (error) {
+    console.log(error.message);
+  }
+};
 
-module.exports = client;
+module.exports = mailSender;

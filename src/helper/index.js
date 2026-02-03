@@ -1,5 +1,5 @@
 module.exports = {
-  emailService: require("./email_service/email_service"),
+  emailService: require("./email_service/otp_service"),
   jsonWebToken: require("./json_web_token"),
   pagination: require("./pagination"),
   response: require("./response/response"),

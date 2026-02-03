@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { createJWT } = require("../helper/json_web_token");
 const { StatusCodes } = require("http-status-codes");
-const client = require("../helper/email_service/email_service");
+const client = require("../helper/email_service/otp_service");
 const uploadToCloudinary = require("../utils/uploader");
 const response = require("../helper/response/response");
 // const response = require("../helper");
@@ -169,6 +169,35 @@ exports.verifyLoginOtp = async (req, res) => {
   }
 };
 
+//======================Forgot Password =========================
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return response.error(res, 1007, 404); // User not found
+    }
+    const tokenResult = await createJWT({
+      data: {
+        userId: user._id,
+      },
+      expiry_time: "1h",
+    });
+
+    const verification = await client.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
+      .verifications.create({
+        to: email,
+        channel: "email",
+      });
+    return response.success(res, 1012); // OTP sent
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    return response.error(res, 9999, 500);
+  }
+};
+
 //===============================Get USER PROFILE=======================================
 const mongoose = require("mongoose");
 
@@ -265,6 +294,14 @@ exports.updateProfile = async (req, res) => {
     if (bio) updates.bio = bio;
     if (phoneNumber) updates.phoneNumber = phoneNumber;
 
+    // Check if username already exists (for other users)
+    if (username) {
+      const existingUser = await User.findOne({ username: username });
+      if (existingUser && existingUser._id.toString() !== userId.toString()) {
+        return response.error(res, 9005, 400);
+      }
+    }
+
     if (profilePictureFile) {
       const allowedTypes = [
         "image/jpeg",
@@ -307,36 +344,7 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-//======================================LOGOUT=======================================
-
-// exports.logout = async (req, res) => {
-//   try {
-//     const token =
-//       req.cookies.accessToken || req.headers.authorization?.split(" ")[1];
-
-//     if (token) {
-//       const decoded = jwt.decode(token);
-//       const expiryDate = new Date(decoded.exp * 1000);
-
-//       await BlacklistedToken.create({
-//         token,
-//         expiresAt: expiryDate,
-//       });
-//     }
-
-//     // Clear cookie
-//     res.clearCookie("accessToken", {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === "production",
-//       sameSite: "strict",
-//     });
-
-//     return response.success(res, 1006);
-//   } catch (err) {
-//     console.error("Logout Error:", err);
-//     return response.error(res, 9999, 500);
-//   }
-// };
+//================================ Logout =============================================
 exports.logout = async (req, res) => {
   try {
     console.log("Logout called");
@@ -375,5 +383,57 @@ exports.logout = async (req, res) => {
   } catch (err) {
     console.error("Logout Error:", err);
     return response.error(res, 9999, 500);
+  }
+};
+
+// --------------------------Update-Password---------------------------------
+exports.updatePassword = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return response.error(
+        res,
+        9000,
+        400,
+        "Current and new passwords are required",
+      );
+    }
+
+    // Get user
+    const user = await User.findById(userId);
+    if (!user) {
+      return response.error(res, 1007, 404, "User not found");
+    }
+
+    // Check if current password matches
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return response.error(res, 1030, 400, "Current password is incorrect");
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    await user.save();
+
+    return response.success(
+      res,
+      1016,
+      null,
+      200,
+      "Password updated successfully",
+    );
+  } catch (err) {
+    console.error("Update Password Error:", err);
+    return response.error(
+      res,
+      9999,
+      500,
+      "Server error while updating password",
+    );
   }
 };

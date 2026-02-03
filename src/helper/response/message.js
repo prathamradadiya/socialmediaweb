@@ -29,6 +29,7 @@ const MESSAGES = {
   1027: "Get Blocked profiles successfully",
   1028: "File Uploaded Successfully",
   1029: "Getting All Follow Requests",
+  1030: "current password is incorrect",
 
   // Posts
   2001: "Post created successfully.....",
@@ -74,11 +75,13 @@ const MESSAGES = {
   7003: "No notifications found.",
 
   // Common / General
+
   9000: "Please enter valid data!",
   9001: "Not found.",
   9002: "Action not allowed.",
   9003: "Already exists............",
   9004: "Cannot perform this action.",
+  9005: "Username already taken",
   9999: "Something went wrong!",
 };
 

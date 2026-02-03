@@ -6,28 +6,29 @@ const {
   loginWithPassword,
   verifyLoginOtp,
   logout,
+  updatePassword,
 } = require("../controllers/auth.controller");
+
+const {
+  resetPasswordToken,
+  resetPassword,
+} = require("../controllers/resetpassword");
+
 const { authMiddleware } = require("../middlewares/auth.middleware");
-// const uploadProfile = require("../middlewares/uploadProfileMiddleware");
+
 const { loginSchema, signupSchema, updateProfileSchema } = require("../helper");
+
 const { validate } = require("../middlewares/validation.middleware");
 
 const checkProfileBlocked = require("../middlewares/checkBlocked.Middleware");
 
-//====================SIGN UP ROUTES================
-// SIGNUP
-// router.post(
-//   "/signup",
-//   uploadProfile.single("profilePicture"),
-//   validate(signupSchema),
-//   signup,
-// );
+//============================SIGNUP ROUTES===============
 router.post("/signup", validate(signupSchema), signup);
 
-//LOGIN ROUTES
+//========================LOGIN ROUTES==================
 router.post("/login", validate(loginSchema), loginWithPassword);
 
-// Logout route
+// =============================Logout route=====================
 router.post("/logout", authMiddleware, logout);
 
 //=========================Get Profiles=========================
@@ -48,5 +49,14 @@ router.put(
 
 //========================VERIFY OTP ROUTES====================
 router.post("/verify-otp", verifyLoginOtp);
+
+// generate token and send email
+router.post("/forgot-password", resetPasswordToken);
+
+// reset password via link clicked in email
+router.get("/reset-password/:token", resetPassword);
+
+//Update-Password
+router.post("/update-password", authMiddleware, updatePassword);
 
 module.exports = router;
