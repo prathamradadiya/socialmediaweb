@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const { cloudinaryConnect } = require("./config/cloudinary");
 const fileUpload = require("express-fileupload");
 const http = require("http");
+const cors = require("cors");
 
 dotenv.config();
 connectDB();
@@ -17,6 +18,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static("public"));
 
 app.use(
   fileUpload({
@@ -25,6 +27,13 @@ app.use(
   }),
 );
 
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"],
+  }),
+);
 // ===== ROUTES =====
 app.use("/api/auth", require("./routes/auth.Routes.js"));
 app.use("/api/content", require("./routes/content.Routes.js"));

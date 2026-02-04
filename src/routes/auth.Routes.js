@@ -10,8 +10,8 @@ const {
 } = require("../controllers/auth.controller");
 
 const {
-  resetPasswordToken,
   resetPassword,
+  forgotPassword,
 } = require("../controllers/resetpassword");
 
 const { authMiddleware } = require("../middlewares/auth.middleware");
@@ -51,10 +51,11 @@ router.put(
 router.post("/verify-otp", verifyLoginOtp);
 
 // generate token and send email
-router.post("/forgot-password", resetPasswordToken);
+router.post("/forgot-password", forgotPassword);
 
 // reset password via link clicked in email
-router.get("/reset-password/:token", resetPassword);
+
+router.post("/reset-password", resetPassword);
 
 //Update-Password
 router.post("/update-password", authMiddleware, updatePassword);
