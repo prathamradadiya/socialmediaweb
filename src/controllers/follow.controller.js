@@ -1,6 +1,6 @@
 const { FollowUser, User, FollowRequest } = require("../models");
 const response = require("../helper/response/response");
-
+const { sendPush } = require("../helper/pushNotification");
 const {
   getPaginationMetadata,
   getPaginatedResponse,
@@ -43,6 +43,19 @@ exports.followRequests = async (req, res) => {
       sender: senderId,
       receiver: receiverId,
     });
+
+    const receiver = await User.findById(receiverId);
+    if (receiver?.deviceToken) {
+      await sendPush({
+        token: receiver.deviceToken,
+        title: "👤 New Follow Request",
+        body: "You have a new follow request",
+        data: {
+          type: "FOLLOW_REQUEST",
+          senderId: senderId.toString(),
+        },
+      });
+    }
 
     return response.success(res, 5004, request, 201);
   } catch (err) {

@@ -1,56 +1,3 @@
-<!-- <!DOCTYPE html>
-<html>
-<body>
-
-<h2>Enable Push</h2>
-<button onclick="init()">Enable Notifications</button>
-
-<p id="tokenBox"></p>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
-
-<script>
-firebase.initializeApp({
-  apiKey: "AIzaSyAW45Nx4ljmnqvr509jl3tK0SSje8wizrs",
-  authDomain: "instagram-58230.firebaseapp.com",
-  projectId: "instagram-58230",
-  storageBucket: "instagram-58230.firebasestorage.app",
-  messagingSenderId: "470839495593",
-  appId: "1:470839495593:web:bc1da0448bf19c1c7152b8",
-  measurementId: "G-XRJC1195VY"
-});
-
-const messaging = firebase.messaging();
-
-async function init() {
-const permission = await Notification.requestPermission();
-if (permission !== "granted") return alert("Permission denied");
-
-
-  const token = await messaging.getToken({
-   vapidKey: "BDOxR4-uiNU0UfiSVp37sGUXMvRuY5zFur_Avy4JrymUp1PcbYcbVNwGPaHtPVMHTHhOpdTjymvbdYKwy1lAsV4"
-
-  });
-
-  document.getElementById("tokenBox").innerText = token;
-
-  // send token to backend
-  await fetch("/api/auth/device-token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ deviceToken: token })
-
-  });
-}
-
-messaging.onMessage((payload) => {
-  alert(payload.notification.title + " - " + payload.notification.body);
-});
-</script>
-
-</body>
-</html> -->
 <!DOCTYPE html>
 <html>
 <body>
@@ -75,7 +22,7 @@ firebase.initializeApp({
   appId: "1:470839495593:web:bc1da0448bf19c1c7152b8"
 });
 
-/* ✅ GLOBAL VARIABLE */
+/* GLOBAL VARIABLE */
 const messaging = firebase.messaging();
 
 /* ================= INIT FUNCTION ================= */
@@ -115,7 +62,7 @@ async function init() {
 messaging.onMessage((payload) => {
   alert(payload.notification.title + " - " + payload.notification.body);
 });
-</script>
 
+</script>
 </body>
 </html>

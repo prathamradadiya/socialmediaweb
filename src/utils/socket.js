@@ -63,6 +63,20 @@ module.exports = (server) => {
           .populate("contentId", "type images reel");
 
         io.to(roomId).emit("receiveMessage", populated);
+
+        const messageData = {
+          roomId,
+          senderId: socket.userId,
+          text,
+          messageType,
+          attachments,
+          contentId,
+        };
+
+        // // Emit to other users in the room except sender
+        // socket.to(roomId).emit("newMessageNotification", messageData);
+        // // Optionally, you can also emit to the sender if you want them to receive the message immediately
+        // // socket.emit("newMessageNotification", messageData);
       } catch (err) {
         socket.emit("error", "Message failed");
       }

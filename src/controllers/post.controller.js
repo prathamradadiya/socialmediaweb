@@ -80,6 +80,25 @@ exports.commentPost = async (req, res) => {
       comment: comment.trim(),
       isDeleted: false,
     });
+    const postOwnerId = post.userId;
+
+    // Do not notify if user comments on own post
+    if (postOwnerId.toString() !== userId.toString()) {
+      const postOwner = await User.findById(postOwnerId);
+
+      if (postOwner?.deviceToken) {
+        await sendPush({
+          token: postOwner.deviceToken,
+          title: "💬 New Comment",
+          body: "Someone commented on your post",
+          data: {
+            type: "COMMENT",
+            postId: postId.toString(),
+          },
+        });
+      }
+    }
+
     await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } });
 
     return response.success(res, 3001); // Comment added successfully
