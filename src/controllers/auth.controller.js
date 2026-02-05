@@ -64,7 +64,7 @@ exports.signup = async (req, res) => {
 
     return response.success(
       res,
-      1001, // message code
+      1001,
       {
         id: newUser._id,
         username: newUser.username,
@@ -435,5 +435,35 @@ exports.updatePassword = async (req, res) => {
       500,
       "Server error while updating password",
     );
+  }
+};
+
+//Save device token for push notifications
+exports.saveDeviceToken = async (req, res) => {
+  try {
+    const userId = req.user._id; // from JWT middleware
+    const { deviceToken } = req.body;
+
+    if (!deviceToken) {
+      return res.status(400).json({
+        success: false,
+        message: "deviceToken required",
+      });
+    }
+
+    await User.findByIdAndUpdate(userId, {
+      deviceToken,
+    });
+
+    return res.json({
+      success: true,
+      message: "Device token saved",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };

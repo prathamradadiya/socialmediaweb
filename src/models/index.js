@@ -6,6 +6,8 @@ module.exports = {
   Post: require("./post.model"),
   BlockedId: require("./blocked_acc.model"),
   Comment: require("./comment.model"),
+  LikePost: require("./likedpost.model"),
+  Notification: require("./notification.model"),
   FollowRequest: require("./followRequest.model"),
   Conversation: require("./conversation.model"),
   Chat: require("./chat.model"),

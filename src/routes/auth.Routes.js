@@ -7,6 +7,7 @@ const {
   verifyLoginOtp,
   logout,
   updatePassword,
+  saveDeviceToken,
 } = require("../controllers/auth.controller");
 
 const {
@@ -15,7 +16,7 @@ const {
 } = require("../controllers/resetpassword");
 
 const { authMiddleware } = require("../middlewares/auth.middleware");
-
+const { testPush } = require("../controllers/testPush.controller");
 const { loginSchema, signupSchema, updateProfileSchema } = require("../helper");
 
 const { validate } = require("../middlewares/validation.middleware");
@@ -60,4 +61,10 @@ router.post("/reset-password", resetPassword);
 //Update-Password
 router.post("/update-password", authMiddleware, updatePassword);
 
+//============================ TEST PUSH ================================
+
+router.post("/test-push", testPush);
+
+// push  token save route
+router.post("/device-token", authMiddleware, saveDeviceToken);
 module.exports = router;

@@ -34,6 +34,7 @@ app.use(
     allowedHeaders: ["Content-Type"],
   }),
 );
+
 // ===== ROUTES =====
 app.use("/api/auth", require("./routes/auth.Routes.js"));
 app.use("/api/content", require("./routes/content.Routes.js"));
@@ -51,4 +52,6 @@ const server = http.createServer(app);
 cloudinaryConnect();
 require("./utils/socket.js")(server);
 
-server.listen(process.env.PORT || 3001, () => console.log(`Server running`));
+server.listen(process.env.PORT || 3001, () =>
+  console.log(`Server is running on port ${process.env.PORT || 3001} `),
+);

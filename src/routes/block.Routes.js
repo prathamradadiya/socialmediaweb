@@ -12,4 +12,5 @@ router.post("/blockUser", authMiddleware, blockUser);
 router.post("/unblock", authMiddleware, unblockUser);
 
 router.get("/getBlockedUsers", authMiddleware, getBlockedUsers);
+
 module.exports = router;

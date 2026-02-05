@@ -59,7 +59,12 @@ const userSchema = new mongoose.Schema(
     },
 
     token: { type: String },
-    resetPasswordExpires: { type: Date },
+    resetPasswordExpires: { tpe: Date },
+
+    deviceToken: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true },
 );

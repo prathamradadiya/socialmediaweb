@@ -1,85 +1,65 @@
-const { Tag, Post, commentPost, likePost, sharePost } = require("../models");
-
+const { Tag, Post, Comment, LikePost, User } = require("../models");
+const { sendPush } = require("../helper/pushNotification");
 const response = require("../helper/response/response");
 const {
   getPaginationMetadata,
   getPaginatedResponse,
 } = require("../helper/pagination");
 
-//============================LIKE POST ================================
+//============================ LIKE POST ================================
 exports.likePost = async (req, res) => {
   try {
     const { postId } = req.body;
     const userId = req.user._id;
 
-    if (!postId) {
-      return response.error(res, 9000, 400); // Please enter valid data
-    }
-
-    // Check post exists & not deleted
     const post = await Post.findOne({ _id: postId, isDeleted: false });
+    if (!post) return response.error(res, 2004, 404);
 
-    if (!post) {
-      return response.error(res, 2004, 404); // Post not found
-    }
+    const existingLike = await LikePost.findOne({ userId, postId });
 
-    const existingLike = await likePost.findOne({ userId, postId });
-
-    // Already liked → unlike
+    // ========= UNLIKE =========
     if (existingLike && !existingLike.isDeleted) {
-      await likePost.updateOne({ userId, postId }, { isDeleted: true });
-      await Post.updateOne(
-        { _id: postId, likesCount: { $gt: 0 } },
-        { $inc: { likesCount: -1 } },
-      );
+      await LikePost.updateOne({ userId, postId }, { isDeleted: true });
+      await Post.updateOne({ _id: postId }, { $inc: { likesCount: -1 } });
 
-      return response.success(res, 4002); // Unliked successfully
+      return response.success(res, 4002);
     }
-
-    // Re-like
+    //========= Like ===========
     if (existingLike && existingLike.isDeleted) {
-      await likePost.updateOne({ userId, postId }, { isDeleted: false });
+      await LikePost.updateOne({ userId, postId }, { isDeleted: false });
       await Post.updateOne({ _id: postId }, { $inc: { likesCount: 1 } });
-
-      return response.success(res, 4001); // Liked successfully
+    } else {
+      await LikePost.create({ userId, postId, isDeleted: false });
+      await Post.updateOne({ _id: postId }, { $inc: { likesCount: 1 } });
     }
 
-    // First-time like
-    await likePost.create({ userId, postId, isDeleted: false });
-    await Post.updateOne({ _id: postId }, { $inc: { likesCount: 1 } });
+    // ========= PUSH NOTIFICATION =========
+    const postOwnerId = post.userId;
 
-    return response.success(res, 4001); // Liked successfully
-  } catch (err) {
-    return response.error(res, 9999, 500); // Something went wrong
-  }
-};
+    // Do not notify if user likes own post
+    if (postOwnerId.toString() !== userId.toString()) {
+      const postOwner = await User.findById(postOwnerId);
 
-//===================================SHARE - POST========================================
-exports.sharePost = async (req, res) => {
-  try {
-    const { postId, sharedUserId } = req.body;
-    const userId = req.user._id;
-
-    const post = await Post.findById(postId);
-    if (!post) {
-      return response.error(res, 2004, 404); // Post not found
+      if (postOwner?.deviceToken) {
+        await sendPush({
+          token: postOwner.deviceToken,
+          title: "❤️ New Like",
+          body: "Someone liked your post",
+          data: {
+            type: "LIKE",
+            postId: postId.toString(),
+          },
+        });
+      }
     }
 
-    const alreadyShared = await sharePost.findOne({ userId, postId });
-    if (alreadyShared) {
-      return response.error(res, 9003, 400); // Already exists
-    }
-
-    await sharePost.create({ userId, postId, sharedUserId });
-    await Post.findByIdAndUpdate(postId, { $inc: { sharesCount: 1 } });
-
-    return response.success(res, 2001); // Post created successfully → reuse
+    return response.success(res, 4001);
   } catch (err) {
     return response.error(res, 9999, 500);
   }
 };
 
-//============================Comments================================
+//============================ Comments ================================
 exports.commentPost = async (req, res) => {
   try {
     const { postId, comment } = req.body;
@@ -94,7 +74,7 @@ exports.commentPost = async (req, res) => {
       return response.error(res, 2004, 404); // Post not found
     }
 
-    await commentPost.create({
+    await Comment.create({
       userId,
       postId,
       comment: comment.trim(),
@@ -117,13 +97,12 @@ exports.getComments = async (req, res) => {
       req.query.limit,
     );
 
-    const comments = await commentPost
-      .find({ postId, isDeleted: false })
+    const comments = await Comment.find({ postId, isDeleted: false })
       .skip(offset)
       .limit(limit)
       .populate({ path: "userId", select: "username" });
 
-    const total = await commentPost.countDocuments({
+    const total = await Comment.countDocuments({
       postId,
       isDeleted: false,
     });
@@ -141,7 +120,7 @@ exports.getComments = async (req, res) => {
   }
 };
 
-//===========================Search Post by Tag==============================================
+//=========================== Search Post by Tag==============================================
 exports.getPostByTag = async (req, res) => {
   try {
     let { tag } = req.params;
@@ -185,7 +164,7 @@ exports.getPostByTag = async (req, res) => {
   }
 };
 
-//======================DELETE Post======================
+//====================== DELETE Post ======================
 exports.deletePost = async (req, res) => {
   try {
     const { postId } = req.body;
