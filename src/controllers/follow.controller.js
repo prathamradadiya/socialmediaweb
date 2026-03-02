@@ -82,8 +82,10 @@ exports.getPendingRequests = async (req, res) => {
   }
 };
 
-/* ===================== ACCEPT / REJECT REQUEST ===================== */
+/* ===================== ACCEPT / REJECT REQUEST===================== */
 exports.respondToRequest = async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
     const { requestId, action } = req.body;
 
@@ -91,7 +93,8 @@ exports.respondToRequest = async (req, res) => {
       return response.error(res, 9000, 400);
     }
 
-    const request = await FollowRequest.findById(requestId);
+    const request = await FollowRequest.findById(requestId).session(session);
+
     if (!request) {
       return response.error(res, 5007, 404);
     }
@@ -101,21 +104,34 @@ exports.respondToRequest = async (req, res) => {
     }
 
     if (action === "accept") {
+      session.startTransaction();
+
       request.status = "accepted";
-      await request.save();
+      await request.save({ session });
 
-      await FollowUser.create({
-        followerId: request.sender,
-        followingId: request.receiver,
-      });
+      await FollowUser.create(
+        [
+          {
+            followerId: request.sender,
+            followingId: request.receiver,
+          },
+        ],
+        { session },
+      );
 
-      await User.findByIdAndUpdate(request.receiver, {
-        $inc: { follower_count: 1 },
-      });
+      await User.findByIdAndUpdate(
+        request.receiver,
+        { $inc: { follower_count: 1 } },
+        { session },
+      );
 
-      await User.findByIdAndUpdate(request.sender, {
-        $inc: { following_count: 1 },
-      });
+      await User.findByIdAndUpdate(
+        request.sender,
+        { $inc: { following_count: 1 } },
+        { session },
+      );
+
+      await session.commitTransaction();
 
       return response.success(res, 5005);
     }
@@ -125,10 +141,11 @@ exports.respondToRequest = async (req, res) => {
       await request.save();
       return response.success(res, 5006);
     }
-
-    return response.error(res, 9000, 400);
   } catch (err) {
+    await session.abortTransaction();
     return response.error(res, 9999, 500);
+  } finally {
+    session.endSession();
   }
 };
 
