@@ -17,4 +17,6 @@ module.exports = {
   Tag: require("./tags.model"),
   Upload: require("./uploads.model"),
   BlacklistedToken: require("./black_listed_token"),
+  Subscription: require("./subscription.model"),
+  SubscriptionPlan: require("./subscriptionPlan.model"),
 };

@@ -10,7 +10,7 @@ const {
   getPostByTag,
 } = require("../controllers/post.controller");
 
-router.post("/likePost", authMiddleware, likePost);
+router.post("/like  Post", authMiddleware, likePost);
 // router.post("/sharePost", authMiddleware, sharePost);
 router.post("/commentPost", authMiddleware, commentPost);
 router.get("/getPostByTag/:tag", authMiddleware, getPostByTag);

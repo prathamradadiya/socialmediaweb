@@ -83,6 +83,21 @@ const MESSAGES = {
   9004: "Cannot perform this action.",
   9005: "Username already taken",
   9999: "Something went wrong!",
+
+  // Subscriptions
+  8001: "Subscription plan created successfully.",
+  8002: "Subscription plan updated successfully.",
+  8003: "Subscription plan deleted successfully.",
+  8004: "Subscription plan not found.",
+  8005: "Checkout session created successfully.",
+  8006: "Subscribed successfully.",
+  8007: "Subscription canceled successfully.",
+  8008: "Already subscribed to this creator.",
+  8009: "No active subscription found.",
+  8010: "Cannot subscribe to yourself.",
+  8011: "Subscription plans fetched successfully.",
+  8012: "Subscriptions fetched successfully.",
+  8013: "Webhook processed successfully.",
 };
 
 module.exports.getMessage = function (messageCode) {

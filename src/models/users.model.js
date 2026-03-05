@@ -65,6 +65,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    stripeCustomerId: {
+      type: String,
+      default: null,
+    },
+    stripeAccountId: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true },
 );
